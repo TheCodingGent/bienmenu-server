@@ -46,7 +46,7 @@ mongoose.connect(process.env.MONGODB_CONNECTION, {
 // verify connection to the database
 const db = mongoose.connection;
 db.once("open", (_) => {
-  console.log("Database connected:", connectionString);
+  console.log("Database connected:", process.env.MONGODB_CONNECTION);
 });
 
 db.on("error", (err) => {
