@@ -1,11 +1,11 @@
 {
   "name": "bienmenu-server",
   "version": "1.0.0",
-  "description": "node server for bienmenu-webapp",
+  "description": "node server for bienmenu-app",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon server.js"
+    "dev": "nodemon index.js"
   },
   "author": "Yasser Ghamlouch",
   "license": "ISC",
@@ -13,10 +13,12 @@
     "body-parser": "^1.19.0",
     "express": "^4.17.1",
     "mongodb": "^3.5.9",
-    "mongoose": "^5.9.20",
-    "nanoid": "^3.1.10"
+    "mongoose": "^5.9.20"
   },
   "devDependencies": {
     "nodemon": "^2.0.4"
+  },
+  "engines": {
+    "node": "13.x"
   }
 }

@@ -1,13 +1,17 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-const nanoid = require("nanoid");
 
 const Restaurant = require("./models/Restaurant");
 
 // constants
 const app = express();
-const port = 3000;
+
+// set the port
+let port = process.env.PORT;
+if (port == null || port == "") {
+  port = 3000;
+}
 
 /** app configuration start **/
 app.use(bodyParser.json());
@@ -26,7 +30,7 @@ app.use(function (req, res, next) {
 app.use(express.urlencoded({ extended: true }));
 
 app.listen(port, function () {
-  console.log("listening on 3000");
+  console.log("listening on port: " + port);
 });
 
 /** app configuration end **/
@@ -40,6 +44,7 @@ const connectionString =
 // connect to the database
 mongoose.connect(connectionString, {
   useNewUrlParser: true,
+  useUnifiedTopology: true,
 });
 
 // verify connection to the database
@@ -51,8 +56,6 @@ db.once("open", (_) => {
 db.on("error", (err) => {
   console.error("connection error:", err);
 });
-
-//Restaurant.deleteMany({});
 
 function saveRestaurant(restaurant) {
   const r = new Restaurant(restaurant);
@@ -132,7 +135,9 @@ app.get("/menu/pdf/:id/:name", (req, res) => {
   const menuName = req.params.name;
   var fs = require("fs"); // req.params.name
   var filename = menuName + ".pdf"; // Be careful of special characters
-  var stream = fs.createReadStream("./public/" + restaurantId + "/" + filename);
+  var stream = fs.createReadStream(
+    __dirname + "/files/" + restaurantId + "/" + filename
+  );
   filename = encodeURIComponent(filename); // Ideally this should strip them
 
   res.setHeader("Content-disposition", 'inline; filename="' + filename + '"');
