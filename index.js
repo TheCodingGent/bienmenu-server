@@ -17,14 +17,14 @@ if (port == null || port == "") {
 app.use(bodyParser.json());
 
 // to be updated to only allow connections from a specific origin
-app.use(function (req, res, next) {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept"
-  );
-  next();
-});
+// app.use(function (req, res, next) {
+//   res.header("Access-Control-Allow-Origin", "*");
+//   res.header(
+//     "Access-Control-Allow-Headers",
+//     "Origin, X-Requested-With, Content-Type, Accept"
+//   );
+//   next();
+// });
 
 // Make sure you place body-parser before your CRUD handlers! This helps tidy up the request object
 app.use(express.urlencoded({ extended: true }));
@@ -37,12 +37,8 @@ app.listen(port, function () {
 
 /* database management start */
 
-// database connection string
-const connectionString =
-  "mongodb+srv://dbBienmenu:vocse0-ranniD-bempoz@cluster0-pfwuh.gcp.mongodb.net/bienmenu-db?retryWrites=true&w=majority";
-
 // connect to the database
-mongoose.connect(connectionString, {
+mongoose.connect(process.env.MONGODB_CONNECTION, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
