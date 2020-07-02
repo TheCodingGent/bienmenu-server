@@ -37,11 +37,19 @@ app.listen(port, function () {
 
 /* database management start */
 
-// connect to the database
+//connect to the database
 mongoose.connect(process.env.MONGODB_CONNECTION, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
+
+// mongoose.connect(
+//   "mongodb+srv://dbBienmenu:vocse0-ranniD-bempoz@cluster0-pfwuh.gcp.mongodb.net/bienmenu-db?retryWrites=true&w=majority",
+//   {
+//     useNewUrlParser: true,
+//     useUnifiedTopology: true,
+//   }
+// );
 
 // verify connection to the database
 const db = mongoose.connection;
@@ -53,22 +61,34 @@ db.on("error", (err) => {
   console.error("connection error:", err);
 });
 
+// db.once("open", (_) => {
+//   console.log(
+//     "Database connected:",
+//     "mongodb+srv://dbBienmenu:vocse0-ranniD-bempoz@cluster0-pfwuh.gcp.mongodb.net/bienmenu-db?retryWrites=true&w=majority"
+//   );
+// });
+
+// db.on("error", (err) => {
+//   console.error("connection error:", err);
+// });
+
 function saveRestaurant(restaurant) {
   const r = new Restaurant(restaurant);
   return r.save();
 }
 
 // saveRestaurant({
-//   name: "Piatti Pronti",
-//   city: "Laval",
-//   address: "1794, boul. Le Corbusier, H7S 2K1",
+//   name: "Moghel Tandoori",
+//   city: "Longueil",
+//   address: "2770, boul. Jacques-Cartier E, J4N 1P8",
 //   menus: [
-//     { name: "Menu", url: "" },
-//     { name: "Wine List", url: "" },
-//     { name: "Dinner&Show Menu", url: "" },
+//     { name: "Complete Menu", url: "" },
+//     { name: "Table d_hôte du midi Menu", url: "" },
+//     { name: "Table d_hôte du soir Menu", url: "" },
+//     { name: "Table d_hôte Menu", url: "" },
 //   ],
-//   rating: 4.5,
-//   color: "red",
+//   rating: 4.4,
+//   color: "#fcba03",
 // })
 //   .then((doc) => {
 //     console.log(doc);
