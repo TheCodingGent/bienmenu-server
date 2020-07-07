@@ -99,10 +99,10 @@ app.get("/restaurants/:id", (req, res) => {
 app.get("/menu/pdf/:id/:filename", (req, res) => {
   console.log("Received request at: " + req.url + " with query: " + req.params);
   const restaurantId = req.params.id; //use restaurant document id for uniqueness
-  const menuFileName = req.params.filename;
+  const menuFilename = req.params.filename;
   var fs = require("fs"); // req.params.name
   var stream = fs.createReadStream(
-    __dirname + "/files/" + restaurantId + "/" + menuFileName
+    __dirname + "/files/" + restaurantId + "/" + menuFilename + ".pdf"
   );
   filename = encodeURIComponent(filename); // Ideally this should strip them
 
