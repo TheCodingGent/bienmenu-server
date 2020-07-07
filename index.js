@@ -96,14 +96,13 @@ app.get("/restaurants/:id", (req, res) => {
 });
 
 // route for retrieving a pdf file of a menu given its name and restaurant id
-app.get("/menu/pdf/:id/:name", (req, res) => {
+app.get("/menu/pdf/:id/:filename", (req, res) => {
   console.log("Received request at: " + req.url + " with query: " + req.params);
   const restaurantId = req.params.id; //use restaurant document id for uniqueness
-  const menuName = req.params.name;
+  const menuFileName = req.params.filename;
   var fs = require("fs"); // req.params.name
-  var filename = menuName + ".pdf"; // Be careful of special characters
   var stream = fs.createReadStream(
-    __dirname + "/files/" + restaurantId + "/" + filename
+    __dirname + "/files/" + restaurantId + "/" + menuFileName
   );
   filename = encodeURIComponent(filename); // Ideally this should strip them
 
