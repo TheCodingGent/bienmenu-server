@@ -16,16 +16,6 @@ if (port == null || port == "") {
 /** app configuration start **/
 app.use(bodyParser.json());
 
-// to be updated to only allow connections from a specific origin
-// app.use(function (req, res, next) {
-//   res.header("Access-Control-Allow-Origin", "*");
-//   res.header(
-//     "Access-Control-Allow-Headers",
-//     "Origin, X-Requested-With, Content-Type, Accept"
-//   );
-//   next();
-// });
-
 // Make sure you place body-parser before your CRUD handlers! This helps tidy up the request object
 app.use(express.urlencoded({ extended: true }));
 
@@ -43,14 +33,6 @@ mongoose.connect(process.env.MONGODB_CONNECTION, {
   useUnifiedTopology: true,
 });
 
-// mongoose.connect(
-//   "mongodb+srv://dbBienmenu:vocse0-ranniD-bempoz@cluster0-pfwuh.gcp.mongodb.net/bienmenu-db?retryWrites=true&w=majority",
-//   {
-//     useNewUrlParser: true,
-//     useUnifiedTopology: true,
-//   }
-// );
-
 // verify connection to the database
 const db = mongoose.connection;
 db.once("open", (_) => {
@@ -61,47 +43,16 @@ db.on("error", (err) => {
   console.error("connection error:", err);
 });
 
-// db.once("open", (_) => {
-//   console.log(
-//     "Database connected:",
-//     "mongodb+srv://dbBienmenu:vocse0-ranniD-bempoz@cluster0-pfwuh.gcp.mongodb.net/bienmenu-db?retryWrites=true&w=majority"
-//   );
-// });
-
-// db.on("error", (err) => {
-//   console.error("connection error:", err);
-// });
-
-function saveRestaurant(restaurant) {
-  const r = new Restaurant(restaurant);
-  return r.save();
-}
-
-// saveRestaurant({
-//   name: "Moghel Tandoori",
-//   city: "Longueil",
-//   address: "2770, boul. Jacques-Cartier E, J4N 1P8",
-//   menus: [
-//     { name: "Complete Menu", url: "" },
-//     { name: "Table d_hôte du midi Menu", url: "" },
-//     { name: "Table d_hôte du soir Menu", url: "" },
-//     { name: "Table d_hôte Menu", url: "" },
-//   ],
-//   rating: 4.4,
-//   color: "#fcba03",
-// })
-//   .then((doc) => {
-//     console.log(doc);
-//   })
-//   .catch((error) => {
-//     console.error(error);
-//   });
-
 /* REST Service Start */
 
 app.get("/", (req, res) => {
   // Note: __dirname is directory current directory you're in. Try logging it and see what you get!
   res.sendFile(__dirname + "/index.html");
+});
+
+// add a new restaurant
+app.post("/restaurants/add", (req, res) => {
+  console.log(req.body);
 });
 
 // get all menus for a given restaurant
