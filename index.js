@@ -61,9 +61,10 @@ app.get("/restaurants/menus/:id", (req, res) => {
 
   Restaurant.findOne({ _id: req.params.id }).exec(function (err, restaurant) {
     if (err) {
-      next(err); // pass the error to Express
+      res.json(err);
+      return;
     } else if (restaurant === null) {
-      res.status(400);
+      res.status(404);
       res.send({ error: "Resource Not Found" });
     } else {
       res.send(restaurant.menus);
@@ -84,9 +85,10 @@ app.get("/restaurants/:id", (req, res) => {
   );
   Restaurant.findOne({ _id: req.params.id }).exec(function (err, restaurant) {
     if (err) {
-      next(err); // pass the error to Express
+      res.json(err);
+      return;
     } else if (restaurant === null) {
-      res.status(400);
+      res.status(404);
       res.send({ error: "Resource Not Found" });
     } else {
       res.send(restaurant);
