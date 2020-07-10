@@ -61,8 +61,9 @@ app.get("/restaurants/menus/:id", (req, res) => {
 
   Restaurant.findOne({ _id: req.params.id }).exec(function (err, restaurant) {
     if (err) {
-      res.json(err);
-      return;
+      console.log("Error occurred: " + err);
+      res.status(400);
+      res.send({ error: err });
     } else if (restaurant === null) {
       res.status(404);
       res.send({ error: "Resource Not Found" });
@@ -83,10 +84,18 @@ app.get("/restaurants/:id", (req, res) => {
   console.log(
     "Received request at: " + req.url + " with params: " + req.params.id
   );
+
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    res.status(400);
+    res.send({ error: "Recieved invalid Id..." });
+    return;
+  }
+
   Restaurant.findOne({ _id: req.params.id }).exec(function (err, restaurant) {
     if (err) {
-      res.json(err);
-      return;
+      console.log("Error occurred: " + err);
+      res.status(400);
+      res.send({ error: err });
     } else if (restaurant === null) {
       res.status(404);
       res.send({ error: "Resource Not Found" });
@@ -106,8 +115,16 @@ app.get("/menu/pdf/:id/:filename", (req, res) => {
   var stream = fs.createReadStream(
     __dirname + "/files/" + restaurantId + "/" + filename
   );
-  filename = encodeURIComponent(filename); // Ideally this should strip them
 
+  stream.on("error", function () {
+    res.status(400);
+    res.send({
+      error: "An error occurred while trying to load pdf file: " + filename,
+    });
+    return;
+  });
+
+  filename = encodeURIComponent(filename); // Ideally this should strip them
   res.setHeader("Content-disposition", 'inline; filename="' + filename + '"');
   res.setHeader("Content-type", "application/pdf");
 
