@@ -18,8 +18,4 @@ const restaurantSchema = new Schema({
   color: String,
 });
 
-module.exports = mongoose.model(
-  "Restaurant",
-  restaurantSchema,
-  "restaurants-dev"
-);
+module.exports = mongoose.model("Restaurant", restaurantSchema);
