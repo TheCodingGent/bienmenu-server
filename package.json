@@ -10,10 +10,16 @@
   "author": "Yasser Ghamlouch",
   "license": "ISC",
   "dependencies": {
+    "bcryptjs": "^2.4.3",
     "body-parser": "^1.19.0",
+    "busboy": "^0.3.1",
+    "cors": "^2.8.5",
     "express": "^4.17.1",
+    "googleapis": "^56.0.0",
+    "jsonwebtoken": "^8.5.1",
     "mongodb": "^3.5.9",
-    "mongoose": "^5.9.20"
+    "mongoose": "^5.9.20",
+    "nodemailer": "^6.4.10"
   },
   "devDependencies": {
     "nodemon": "^2.0.4"

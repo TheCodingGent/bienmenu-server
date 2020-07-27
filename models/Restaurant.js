@@ -1,12 +1,15 @@
 const mongoose = require("mongoose");
+const { ObjectId } = require("mongodb");
 const Schema = mongoose.Schema;
 
 const menuSchema = new Schema({
   name: String,
-  url: String,
+  filename: String,
+  lastupdated: { type: Date, default: Date.now },
 });
 
 const restaurantSchema = new Schema({
+  _id: ObjectId,
   name: String,
   city: String,
   address: String,
@@ -15,4 +18,8 @@ const restaurantSchema = new Schema({
   color: String,
 });
 
-module.exports = mongoose.model("Restaurant", restaurantSchema);
+module.exports = mongoose.model(
+  "Restaurant",
+  restaurantSchema,
+  "restaurants-dev"
+);
