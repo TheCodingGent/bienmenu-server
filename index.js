@@ -14,11 +14,11 @@ if (port == null || port == "") {
   port = 3000;
 }
 
-// var corsOptions = {
-//   origin: "https://thecodinggent.github.io/bienmenu-webapp/",
-// };
+var corsOptions = {
+  origin: "https://thecodinggent.github.io",
+};
 
-// app.use(cors(corsOptions));
+app.use(cors(corsOptions));
 
 // parse requests of content-type - application/json
 app.use(express.json({ limit: "50mb", extended: true }));
