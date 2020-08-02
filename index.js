@@ -2,6 +2,7 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const Busboy = require("busboy");
+const { authJwt } = require("./middlewares");
 
 /** app configuration start **/
 
@@ -14,8 +15,9 @@ if (port == null || port == "") {
 }
 
 var corsOptions = {
-  origin: "http://localhost:" + port,
+  origin: "http://localhost:3000",
 };
+
 app.use(cors(corsOptions));
 
 // parse requests of content-type - application/json
@@ -32,6 +34,7 @@ const server = require("http").createServer(app);
 /* database management start */
 
 const db = require("./models");
+const User = require("./models/User");
 const Role = db.role;
 const Restaurant = db.restaurant;
 const Menu = db.menu;
@@ -144,6 +147,43 @@ app.post("/restaurants/add", (req, res) => {
   });
 });
 
+// add a new restaurant for a user
+app.post("/restaurants/add/user", [authJwt.verifyToken], (req, res) => {
+  var userId = req.userId;
+  var restaurant = new Restaurant(req.body);
+
+  restaurant.save(function (err, restaurant) {
+    if (err) {
+      console.error(err);
+      res.status(500).send({ message: err });
+      return;
+    }
+
+    console.log(restaurant.name + " saved to restaurants collection.");
+
+    // add the restaurant Id to the users restaurants
+    User.findOneAndUpdate(
+      { _id: userId },
+      { $push: { restaurants: restaurant._id } },
+      { new: true }
+    ).exec(function (err, user) {
+      if (err) {
+        console.log("Error occurred: " + err);
+        res.status(400);
+        res.send({ error: err });
+      } else if (user === null) {
+        res.status(404);
+        res.send({ error: "Resource Not Found" });
+      } else {
+        res.send({ success: "Restaurant and user updated successfully!" });
+        console.log(
+          "Updated restaurant: " + restaurant + " and user: " + user.username
+        );
+      }
+    });
+  });
+});
+
 // get all menus for a given restaurant
 app.get("/restaurants/menus/:id", (req, res) => {
   console.log("Received request at: " + req.url + " with query: " + req.params);
@@ -173,45 +213,41 @@ app.put("/restaurants/menus/add/:id", (req, res) => {
   console.log("Received request at: " + req.url + " with query: " + req.params);
   console.log("Menu:" + req.body);
   console.log("ID:" + req.params.id);
-  Restaurant.findOneAndUpdate(
-    { _id: req.params.id },
-    { $push: { menus: req.body } },
-    { new: true }
-  ).exec(function (err, restaurant) {
-    if (err) {
-      console.log("Error occurred: " + err);
-      res.status(400);
-      res.send({ error: err });
-    } else if (restaurant === null) {
-      res.status(404);
-      res.send({ error: "Resource Not Found" });
-    } else {
-      res.send({ success: "Menu added successfully!" });
-      console.log("Updated restaurant: " + restaurant);
-    }
-  });
-});
 
-// Add a menu to an existing restaurant
-app.put("/restaurants/menus/add/:id", (req, res) => {
-  console.log("Received request at: " + req.url + " with query: " + req.params);
-  console.log("Menu:" + req.body);
-  console.log("ID:" + req.params.id);
-  Restaurant.findOneAndUpdate(
-    { _id: req.params.id },
-    { $push: { menus: req.body } },
-    { new: true }
-  ).exec(function (err, restaurant) {
+  Restaurant.findById(req.params.id, "menus maxMenuCount").exec(function (
+    err,
+    restaurant
+  ) {
     if (err) {
-      console.log("Error occurred: " + err);
       res.status(400);
       res.send({ error: err });
     } else if (restaurant === null) {
       res.status(404);
       res.send({ error: "Resource Not Found" });
     } else {
-      res.send({ success: "Menu added successfully!" });
-      console.log("Updated restaurant: " + restaurant);
+      console.log(`Checking menus length ${restaurant.menus.length}`);
+      if (restaurant.menus.length >= restaurant.maxMenuCount) {
+        res.status(403);
+        res.send({ error: "Maximum number of allowed menus reached" });
+      } else {
+        Restaurant.findOneAndUpdate(
+          { _id: req.params.id },
+          { $push: { menus: req.body } },
+          { new: true }
+        ).exec(function (err, restaurant) {
+          if (err) {
+            console.log("Error occurred: " + err);
+            res.status(400);
+            res.send({ error: err });
+          } else if (restaurant === null) {
+            res.status(404);
+            res.send({ error: "Resource Not Found" });
+          } else {
+            res.send({ success: "Menu added successfully!" });
+            console.log("Updated restaurant: " + restaurant);
+          }
+        });
+      }
     }
   });
 });

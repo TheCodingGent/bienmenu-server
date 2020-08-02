@@ -10,13 +10,43 @@ module.exports = function (app) {
     next();
   });
 
-  app.get("/api/test/all", controller.allAccess);
+  app.get("/api/content/all", controller.allAccess);
 
-  app.get("/api/test/user", [authJwt.verifyToken], controller.userBoard);
+  app.get("/api/content/user", [authJwt.verifyToken], controller.userContent);
 
   app.get(
-    "/api/test/admin",
+    "/api/content/admin",
     [authJwt.verifyToken, authJwt.isAdmin],
-    controller.adminBoard
+    controller.adminContent
+  );
+
+  app.get(
+    "/api/content/features/update-allowed",
+    [authJwt.verifyToken],
+    controller.checkMenuUpdateAllowed
+  );
+
+  app.get(
+    "/api/content/features/update-count",
+    [authJwt.verifyToken],
+    controller.updateMenuUpdateCount
+  );
+
+  app.get(
+    "/api/content/features/update-feature-expiry",
+    [authJwt.verifyToken],
+    controller.updateUserFeatureExpiryData
+  );
+
+  app.get(
+    "/api/content/features/update-restaurant-count",
+    [authJwt.verifyToken],
+    controller.updateRestaurantCount
+  );
+
+  app.get(
+    "/api/content/features/add-restaurant-allowed",
+    [authJwt.verifyToken],
+    controller.checkRestaurantAddAllowed
   );
 };

@@ -11,8 +11,14 @@ const nodemailer = require("nodemailer");
 const { google } = require("googleapis");
 const OAuth2 = google.auth.OAuth2;
 
+// stripe setup to update with production key
+const stripe = require("stripe")(
+  "pk_live_51H9gmxBd2ZddnxHe9V9XUppP6IxdqqFhjh5nFoSGl730RxAUjzT3U48RbAt15KentuIWDVJfojNDozZdZf366yyg00gsmi04pK"
+);
+
 exports.signup = (req, res) => {
   console.log("Received request to register user: " + req.body.username);
+
   const user = new User({
     firstName: req.body.firstName,
     lastName: req.body.lastName,
@@ -77,7 +83,7 @@ exports.signup = (req, res) => {
   });
 };
 
-exports.signin = (req, res) => {
+exports.signin = async (req, res) => {
   console.log("Received request to login user: " + req.body.username);
   User.findOne({
     username: req.body.username,
@@ -110,27 +116,160 @@ exports.signin = (req, res) => {
         expiresIn: 86400, // 24 hours
       });
 
-      var authorities = [];
+      // check if user has a stripe customerId
+      if (!user.stripeCustomerId) {
+        console.log("User does not have a customer Id in the database");
 
-      for (let i = 0; i < user.roles.length; i++) {
-        authorities.push("ROLE_" + user.roles[i].name.toUpperCase());
+        stripe.customers
+          .list({ email: user.email, limit: 1 })
+          .then((customers) => {
+            // check if customer is found or not
+            if (Array.isArray(customers.data) && customers.data.length) {
+              //customer is found in stripe but no id in db, add customer id to our db
+              user.stripeCustomerId = customers.data[0].id;
+              stripe.subscriptions
+                .list({
+                  customer: user.stripeCustomerId,
+                  limit: 3,
+                  status: "active",
+                })
+                .then((subscriptions) => {
+                  // check if any subscriptions found
+                  console.log(subscriptions.data.length);
+                  if (
+                    Array.isArray(subscriptions.data) &&
+                    subscriptions.data.length
+                  ) {
+                    //subscriptions found
+                    for (let i = 0; i < subscriptions.data.length; i++) {
+                      let subItems = subscriptions.data[i].items.data;
+                      for (let j = 0; j < subItems.length; j++) {
+                        // for each subscription, go through the sub items and add the active product ids to the user
+                        if (subItems[i].price.active === true) {
+                          user.activeProducts.push(subItems[i].price.id);
+                        }
+                      }
+                    }
+                  }
+                  //update the users stripe customer id and their active products
+                  user.save((err) => {
+                    if (err) {
+                      console.log(
+                        "Failed to update user customerId and active products"
+                      );
+                    } else {
+                      console.log(
+                        `CustomerId and active products updated successfully for usr ${user.username}`
+                      );
+                    }
+                  });
+
+                  var authorities = [];
+
+                  for (let i = 0; i < user.roles.length; i++) {
+                    authorities.push(
+                      "ROLE_" + user.roles[i].name.toUpperCase()
+                    );
+                  }
+
+                  res.status(200).send({
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    username: user.username,
+                    email: user.email,
+                    roles: authorities,
+                    restaurants: user.restaurants,
+                    activeProducts: user.activeProducts,
+                    accessToken: token,
+                  });
+                })
+                .catch((error) => {
+                  console.error(error);
+                });
+            } else {
+              var authorities = [];
+
+              for (let i = 0; i < user.roles.length; i++) {
+                authorities.push("ROLE_" + user.roles[i].name.toUpperCase());
+              }
+
+              res.status(200).send({
+                firstName: user.firstName,
+                lastName: user.lastName,
+                username: user.username,
+                email: user.email,
+                roles: authorities,
+                restaurants: user.restaurants,
+                activeProducts: user.activeProducts,
+                accessToken: token,
+              });
+            } // else customer is not in db nor in stripe so they are on a basic plan
+          })
+          .catch((error) => console.error(error));
+      } else {
+        // stripe customer Id already exists only update their subscription products on login
+        stripe.subscriptions
+          .list({
+            customer: user.stripeCustomerId,
+            limit: 3,
+            status: "active",
+          })
+          .then((subscriptions) => {
+            // check if any subscriptions found
+            console.log(subscriptions.data.length);
+            if (
+              Array.isArray(subscriptions.data) &&
+              subscriptions.data.length
+            ) {
+              //subscriptions found
+              for (let i = 0; i < subscriptions.data.length; i++) {
+                let subItems = subscriptions.data[i].items.data;
+                for (let j = 0; j < subItems.length; j++) {
+                  // for each subscription, go through the sub items and add the active product ids to the user
+                  if (subItems[i].price.active === true) {
+                    user.activeProducts.push(subItems[i].price.id);
+                  }
+                }
+              }
+            }
+            //update the users stripe customer id and their active products
+            user.save((err) => {
+              if (err) {
+                console.log(
+                  "Failed to update user customerId and active products"
+                );
+              } else {
+                console.log(
+                  `CustomerId and active products updated successfully for usr ${user.username}`
+                );
+              }
+            });
+
+            var authorities = [];
+
+            for (let i = 0; i < user.roles.length; i++) {
+              authorities.push("ROLE_" + user.roles[i].name.toUpperCase());
+            }
+
+            res.status(200).send({
+              firstName: user.firstName,
+              lastName: user.lastName,
+              username: user.username,
+              email: user.email,
+              roles: authorities,
+              restaurants: user.restaurants,
+              activeProducts: user.activeProducts,
+              accessToken: token,
+            });
+          })
+          .catch((error) => {
+            console.error(error);
+          });
       }
-
-      res.status(200).send({
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        username: user.username,
-        email: user.email,
-        roles: authorities,
-        restaurants: user.restaurants,
-        accessToken: token,
-      });
     });
 };
 
 // Password reset handling
-
 const oauth2Client = new OAuth2(
   "236367808536-ac1cd5a5tt855dfv1thjenfisthjostp.apps.googleusercontent.com", // ClientID
   "KkLrjAaSJ9fy9nobQM8HwPHj", // Client Secret
@@ -217,7 +356,6 @@ exports.resetpassword = (req, res) => {
 };
 
 // set a new password
-
 exports.newPassword = (req, res) => {
   console.log(
     "Received request to update password for: " + req.body.resettoken
@@ -261,4 +399,84 @@ exports.newPassword = (req, res) => {
       });
     }
   );
+};
+
+// return if member is a plus member
+// needs to be called after verifyPlusMember middleware
+exports.plusMemberVerification = (req, res) => {
+  // user has been verified to be logged
+  // verify the user has a plus subscription
+  User.findById(req.userId).exec((err, user) => {
+    if (err) {
+      res.status(500).send({ message: err });
+      return;
+    }
+
+    // PLUS product id: prod_HjAe5I8ubn6eLY
+    for (let i = 0; i < user.activeProducts.length; i++) {
+      if (user.activeProducts[i] === "price_1H9kwVBd2ZddnxHercl86SA3") {
+        console.log("User has plus membership");
+
+        // generate a token and return it
+        var plustoken = jwt.sign(
+          { id: user.id, product: user.activeProducts[i] },
+          config.secret,
+          {
+            expiresIn: 86400, // 24 hours
+          }
+        );
+
+        res.status(200).send({
+          subscriptionToken: plustoken,
+        });
+        return;
+      }
+    }
+
+    res.status(403).send({
+      message:
+        "This view requires a plus membership! Please upgrade to access it.",
+    });
+    return;
+  });
+};
+
+/****************************
+ * Helpers
+ ****************************/
+
+getActiveProducts = (customerId) => {
+  var activeProducts = [];
+  stripe.subscriptions
+    .list({
+      customer: customerId,
+      limit: 3,
+      status: "active",
+    })
+    .then((subscriptions) => {
+      // check if any subscriptions found
+      console.log(subscriptions.data.length);
+      if (Array.isArray(subscriptions.data) && subscriptions.data.length) {
+        console.log("subscriptions found");
+        //subscriptions found
+        for (let i = 0; i < subscriptions.data.length; i++) {
+          let subItems = subscriptions.data[i].items.data;
+          console.log(`subitems ${subItems}`);
+          for (let j = 0; j < subItems.length; j++) {
+            // for each subscription, go through the sub items and add the active product ids to the user
+            if (subItems[i].price.active === true) {
+              console.log("found active item");
+              console.log(subItems[i].price.id);
+
+              activeProducts.push(subItems[i].price.id);
+            }
+          }
+        }
+      }
+      return activeProducts;
+    })
+    .catch((error) => {
+      console.error(error);
+      return activeProducts;
+    });
 };

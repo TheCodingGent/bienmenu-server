@@ -28,4 +28,10 @@ module.exports = function (app) {
     [authJwt.validPasswordToken],
     controller.newPassword
   );
+
+  app.get(
+    "/api/auth/subscription/plus",
+    [authJwt.verifyToken],
+    controller.plusMemberVerification
+  );
 };
