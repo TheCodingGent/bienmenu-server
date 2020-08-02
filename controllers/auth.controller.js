@@ -13,7 +13,7 @@ const OAuth2 = google.auth.OAuth2;
 
 // stripe setup to update with production key
 const stripe = require("stripe")(
-  "pk_live_51H9gmxBd2ZddnxHe9V9XUppP6IxdqqFhjh5nFoSGl730RxAUjzT3U48RbAt15KentuIWDVJfojNDozZdZf366yyg00gsmi04pK"
+  "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"
 );
 
 exports.signup = (req, res) => {
