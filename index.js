@@ -15,7 +15,7 @@ if (port == null || port == "") {
 }
 
 var corsOptions = {
-  origin: "http://localhost:3000",
+  origin: "https://thecodinggent.github.io/bienmenu-webapp/",
 };
 
 app.use(cors(corsOptions));
