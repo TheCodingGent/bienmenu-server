@@ -15,7 +15,7 @@ if (port == null || port == "") {
 }
 
 var corsOptions = {
-  origin: "https://thecodinggent.github.io",
+  origin: "https://bienmenuapp.com",
 };
 
 app.use(cors(corsOptions));
