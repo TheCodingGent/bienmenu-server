@@ -18,6 +18,10 @@ var corsOptions = {
   origin: "https://bienmenuapp.com",
 };
 
+// var corsOptions = {
+//   origin: "http://localhost:4200",
+// };
+
 app.use(cors(corsOptions));
 
 // parse requests of content-type - application/json
@@ -139,10 +143,12 @@ app.get("/restaurants/:id", (req, res) => {
 
 // add a new restaurant
 app.post("/restaurants/add", (req, res) => {
+  if (req.body.color === "") delete req.body.color;
   var restaurant = new Restaurant(req.body);
 
   restaurant.save(function (err, restaurant) {
     if (err) return console.error(err);
+    res.send({ success: "Restaurant added successfully!" });
     console.log(restaurant.name + " saved to restaurants collection.");
   });
 });
@@ -150,6 +156,8 @@ app.post("/restaurants/add", (req, res) => {
 // add a new restaurant for a user
 app.post("/restaurants/add/user", [authJwt.verifyToken], (req, res) => {
   var userId = req.userId;
+
+  if (req.body.color === "") delete req.body.color;
   var restaurant = new Restaurant(req.body);
 
   restaurant.save(function (err, restaurant) {
