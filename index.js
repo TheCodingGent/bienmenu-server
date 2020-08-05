@@ -324,7 +324,8 @@ app.get("/menu/pdf/:id/:filename", (req, res) => {
     __dirname + "/files/" + restaurantId + "/" + filename
   );
 
-  stream.on("error", function () {
+  stream.on("error", function (e) {
+    console.log(`An error occurred: ${e}`);
     res.status(400);
     res.send({
       error: "An error occurred while trying to load pdf file: " + filename,
