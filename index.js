@@ -15,7 +15,7 @@ if (port == null || port == "") {
 }
 
 var corsOptions = {
-  origin: "https://bienmenuapp.com",
+  origin: "https://www.bienmenuapp.com",
 };
 
 // var corsOptions = {
