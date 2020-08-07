@@ -4,6 +4,19 @@ const cors = require("cors");
 const Busboy = require("busboy");
 const { authJwt } = require("./middlewares");
 
+const fs = require("fs");
+const AWS = require("aws-sdk");
+
+const AWSID = process.env.AWS_ACCESS_KEY_ID;
+const AWSSECRET = process.env.AWS_SECRET_KEY;
+
+const BUCKET_NAME = "bienmenu";
+
+const s3 = new AWS.S3({
+  accessKeyId: AWSID,
+  secretAccessKey: AWSSECRET,
+});
+
 /** app configuration start **/
 
 const app = express();
@@ -15,12 +28,8 @@ if (port == null || port == "") {
 }
 
 var corsOptions = {
-  origin: "https://www.bienmenuapp.com",
+  origin: process.env.CORS_OPTION,
 };
-
-// var corsOptions = {
-//   origin: "http://localhost:4200",
-// };
 
 app.use(cors(corsOptions));
 
@@ -234,7 +243,7 @@ app.put("/restaurants/menus/add/:id", (req, res) => {
       res.send({ error: "Resource Not Found" });
     } else {
       console.log(`Checking menus length ${restaurant.menus.length}`);
-      if (restaurant.menus.length >= restaurant.maxMenuCount) {
+      if (restaurant.menus.length > restaurant.maxMenuCount) {
         res.status(403);
         res.send({ error: "Maximum number of allowed menus reached" });
       } else {
@@ -260,7 +269,6 @@ app.put("/restaurants/menus/add/:id", (req, res) => {
   });
 });
 
-// Add a menu to an existing restaurant
 app.post("/restaurants/menus/update/:id", (req, res) => {
   console.log("Received request at: " + req.url + " with query: " + req.params);
   console.log("Menu:" + req.body);
@@ -301,9 +309,22 @@ app.post("/restaurants/menus/delete/:restaurantId", (req, res) => {
       res.status(404);
       res.send({ error: "Resource Not Found" });
     } else {
-      deleteMenuFile(req.params.restaurantId, req.body.filename);
-      res.send({ success: "Menu deleted successfully!" });
-      console.log("Deleted menu: " + req.body.menuId + " successfully");
+      var fileKey = `menus/${req.params.restaurantId}/${req.body.filename}.pdf`;
+      var params = { Bucket: BUCKET_NAME, Key: fileKey };
+
+      s3.deleteObject(params, function (err, data) {
+        if (err) {
+          console.log(
+            `An error occurred while trying to delete the menu file...${err}`
+          );
+          res.status(500).send(err);
+        }
+        // error
+        else {
+          res.send({ success: "Menu deleted successfully!" });
+          console.log("Deleted menu: " + req.body.menuId + " successfully");
+        }
+      });
     }
   });
 });
@@ -318,26 +339,32 @@ app.post("/restaurants/menus/delete/:restaurantId", (req, res) => {
 app.get("/menu/pdf/:id/:filename", (req, res) => {
   console.log("Received request at: " + req.url + " with query: " + req.params);
   const restaurantId = req.params.id; //use restaurant document id for uniqueness
-  var filename = req.params.filename + ".pdf";
-  const fs = require("fs"); // req.params.name
-  var stream = fs.createReadStream(
-    __dirname + "/files/" + restaurantId + "/" + filename
-  );
+  var fileKey = `menus/${restaurantId}/${req.params.filename}.pdf`;
 
-  stream.on("error", function (e) {
-    console.log(`An error occurred: ${e}`);
-    res.status(400);
-    res.send({
-      error: "An error occurred while trying to load pdf file: " + filename,
-    });
-    return;
+  const params = {
+    Bucket: BUCKET_NAME, // your s3 bucket name
+    Key: fileKey,
+  };
+
+  var s3Stream = s3.getObject(params).createReadStream();
+
+  // Listen for errors returned by the service
+  s3Stream.on("error", function (err) {
+    // NoSuchKey: The specified key does not exist
+    console.error(err);
+    res.status(500).send(err);
   });
 
-  filename = encodeURIComponent(filename); // Ideally this should strip them
-  res.setHeader("Content-disposition", 'inline; filename="' + filename + '"');
-  res.setHeader("Content-type", "application/pdf");
-
-  stream.pipe(res);
+  s3Stream
+    .pipe(res)
+    .on("error", function (err) {
+      // capture any errors that occur when writing data to the file
+      console.error("File Stream:", err);
+      res.status(500).send(err);
+    })
+    .on("close", function () {
+      console.log("Done.");
+    });
 });
 
 // upload a PDF file to the server
@@ -347,53 +374,58 @@ app.post("/menu/pdf/upload/:id", (req, res) => {
   );
   const restaurantId = req.params.id; //use restaurant document id for uniqueness
 
-  const fs = require("fs");
+  let chunks = [],
+    fname,
+    ftype,
+    fEncoding;
 
-  if (fs.existsSync(__dirname + "/files/" + restaurantId)) {
-    console.log("Restaurant: " + restaurantId + " dir exists");
-  } else {
-    console.log(
-      "Restaurant: " + restaurantId + " dir DOES NOT exist...creating it"
-    );
-    fs.mkdirSync(__dirname + "/files/" + restaurantId);
-  }
-
-  var busboy = new Busboy({ headers: req.headers });
+  let busboy = new Busboy({ headers: req.headers });
   busboy.on("file", function (fieldname, file, filename, encoding, mimetype) {
-    var saveTo = __dirname + "/files/" + restaurantId + "/" + filename;
-    file.pipe(fs.createWriteStream(saveTo));
+    console.log(
+      "File [" +
+        fieldname +
+        "]: filename: " +
+        filename +
+        ", encoding: " +
+        encoding +
+        ", mimetype: " +
+        mimetype
+    );
+    fname = filename;
+    ftype = mimetype;
+    fEncoding = encoding;
+    file.on("data", function (data) {
+      // you will get chunks here will pull all chunk to an array and later concat it.
+      chunks.push(data);
+    });
+    file.on("end", function () {
+      console.log("File [" + filename + "] Finished");
+    });
   });
-
   busboy.on("finish", function () {
-    res.writeHead(200, { Connection: "close" });
-    res.end("Files written successfully!");
+    const params = {
+      Bucket: BUCKET_NAME, // your s3 bucket name
+      Key: `menus/${restaurantId}/${fname}`,
+      Body: Buffer.concat(chunks), // concatinating all chunks
+      ContentEncoding: fEncoding, // optional
+      ContentType: ftype, // required
+    };
+    // we are sending buffer data to s3.
+    s3.upload(params, (err, s3res) => {
+      if (err) {
+        res.send({ err, status: "error" });
+      } else {
+        res.send({
+          data: s3res,
+          status: "success",
+          msg: "Menu file successfully uploaded.",
+        });
+      }
+    });
   });
 
   return req.pipe(busboy);
 });
-
-// Helpers
-
-deleteMenuFile = (restaurantId, filename) => {
-  if (restaurantId == null || filename == null) {
-    console.log(
-      "Failed to delete menu file restaurantId and filename cannot be null"
-    );
-  }
-
-  const fs = require("fs");
-
-  fs.unlink(
-    __dirname + "/files/" + restaurantId + "/" + filename + ".pdf",
-    (err) => {
-      if (err)
-        console.log("Failed to delete " + filename + " for " + restaurantId);
-      console.log(
-        filename + " for " + restaurantId + " was deleted successfully!"
-      );
-    }
-  );
-};
 
 /* REST Service End */
 

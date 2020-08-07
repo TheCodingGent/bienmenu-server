@@ -12,9 +12,7 @@ const { google } = require("googleapis");
 const OAuth2 = google.auth.OAuth2;
 
 // stripe setup to update with production key
-const stripe = require("stripe")(
-  "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"
-);
+const stripe = require("stripe")(process.env.STRIPE_API);
 
 exports.signup = (req, res) => {
   console.log("Received request to register user: " + req.body.username);
@@ -271,14 +269,13 @@ exports.signin = async (req, res) => {
 
 // Password reset handling
 const oauth2Client = new OAuth2(
-  "236367808536-ac1cd5a5tt855dfv1thjenfisthjostp.apps.googleusercontent.com", // ClientID
-  "KkLrjAaSJ9fy9nobQM8HwPHj", // Client Secret
-  "https://developers.google.com/oauthplayground" // Redirect URL
+  process.env.GOOGLE_CLIENT_ID, // ClientID
+  process.env.GOOGLE_CLIENT_SECRET, // Client Secret
+  process.env.GOOGLE_REDIRECT_URL // Redirect URL
 );
 
 oauth2Client.setCredentials({
-  refresh_token:
-    "1//04UlYTnnU7xtuCgYIARAAGAQSNwF-L9Iru3Rt7vM4AJgbO-dJ3O50x4GMlPW7WhWMQs_Kf81H_-Nz77t_aUprCYLL0TsVJkh-Gjk",
+  refresh_token: process.env.GOOGLE_CLIENT_REFRESH_TOKEN,
 });
 const accessToken = oauth2Client.getAccessToken();
 
@@ -326,11 +323,9 @@ exports.resetpassword = (req, res) => {
         auth: {
           type: "OAuth2",
           user: "bienmenuapp@gmail.com",
-          clientId:
-            "236367808536-ac1cd5a5tt855dfv1thjenfisthjostp.apps.googleusercontent.com",
-          clientSecret: "KkLrjAaSJ9fy9nobQM8HwPHj",
-          refreshToken:
-            "1//04UlYTnnU7xtuCgYIARAAGAQSNwF-L9Iru3Rt7vM4AJgbO-dJ3O50x4GMlPW7WhWMQs_Kf81H_-Nz77t_aUprCYLL0TsVJkh-Gjk",
+          clientId: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          refreshToken: process.env.GOOGLE_CLIENT_REFRESH_TOKEN,
           accessToken: accessToken,
         },
       });
@@ -414,7 +409,10 @@ exports.plusMemberVerification = (req, res) => {
 
     // PLUS product id: prod_HjAe5I8ubn6eLY
     for (let i = 0; i < user.activeProducts.length; i++) {
-      if (user.activeProducts[i] === "price_1H9kwVBd2ZddnxHercl86SA3") {
+      if (
+        user.activeProducts[i] === process.env.STRIPE_PLUS_PRICE_MONTHLY ||
+        user.activeProducts[i] === process.env.STRIPE_PLUS_PRICE_YEARLY
+      ) {
         console.log("User has plus membership");
 
         // generate a token and return it
