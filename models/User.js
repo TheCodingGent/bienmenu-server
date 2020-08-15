@@ -17,6 +17,7 @@ const userSchema = new Schema({
   maxRestaurantCount: { type: Number, default: 1 },
   currentMenuUpdateCount: { type: Number, default: 0 },
   maxMenuUpdateCount: { type: Number, default: 1 },
+  maxMenusPerRestaurant: { type: Number, default: 4 },
   featuresExpiryDate: {
     type: Date,
     default: function () {

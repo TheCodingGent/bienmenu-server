@@ -1,0 +1,130 @@
+const Busboy = require("busboy");
+const AWS = require("aws-sdk");
+
+const AWSID = process.env.AWS_ACCESS_KEY_ID;
+const AWSSECRET = process.env.AWS_SECRET_KEY;
+
+const BUCKET_NAME = "bienmenu";
+
+const s3 = new AWS.S3({
+  accessKeyId: AWSID,
+  secretAccessKey: AWSSECRET,
+});
+
+// get all restaurants
+exports.getRestaurants = (req, res) => {
+  console.log(`Received request for all restaurants`);
+
+  Restaurant.find().exec(function (err, restaurants) {
+    if (err) {
+      console.log(`An error occurred while retrieving all restaurants: ${err}`);
+      res.status(500);
+      res.send({ err, status: "error" });
+    } else if (restaurants === null) {
+      res.status(404);
+      res.send({ status: "error", msg: "Resource Not Found" });
+    } else {
+      res.send(restaurants);
+      console.log(restaurants);
+    }
+  });
+};
+
+// get a pdf file of a menu given its name and restaurant id to which it belongs
+exports.getMenuFile = (req, res) => {
+  const restaurantId = req.params.id; //use restaurant document id for uniqueness
+  const filename = req.params.filename;
+
+  console.log(
+    `Received request to retrieve menu file ${filename} for restaurant ${restaurantId}`
+  );
+
+  var fileKey = `menus/${restaurantId}/${filename}.pdf`;
+
+  const params = {
+    Bucket: BUCKET_NAME,
+    Key: fileKey,
+  };
+
+  var s3Stream = s3.getObject(params).createReadStream();
+
+  // Listen for errors returned by the service
+  s3Stream.on("error", function (err) {
+    // NoSuchKey: The specified key does not exist
+    console.error(`An error occurred while reading data from S3: ${err}`);
+    res.status(500).send({ err, status: "error" });
+  });
+
+  s3Stream
+    .pipe(res)
+    .on("error", function (err) {
+      // capture any errors that occur when writing data to the file
+      console.error(`An error occurred in the output filestream: ${err}`);
+      res.status(500).send({ err, status: "error" });
+    })
+    .on("close", function () {
+      console.log(`File ${filename} retrieved successfully!`);
+    });
+};
+
+// upload a PDF file to the server
+exports.uploadMenuFile = (req, res) => {
+  const restaurantId = req.params.id;
+  console.log(`Received request to upload menu for restaurant ${restaurantId}`);
+
+  let chunks = [],
+    fname,
+    ftype,
+    fEncoding;
+
+  let busboy = new Busboy({ headers: req.headers });
+  busboy.on("file", function (fieldname, file, filename, encoding, mimetype) {
+    console.log(
+      "File [" +
+        fieldname +
+        "]: filename: " +
+        filename +
+        ", encoding: " +
+        encoding +
+        ", mimetype: " +
+        mimetype
+    );
+
+    fname = filename;
+    ftype = mimetype;
+    fEncoding = encoding;
+    file.on("data", function (data) {
+      // pull all chunk to an array and later concat it.
+      chunks.push(data);
+    });
+
+    file.on("end", function () {
+      console.log("File [" + filename + "] Finished");
+    });
+  });
+
+  busboy.on("finish", function () {
+    const params = {
+      Bucket: BUCKET_NAME,
+      Key: `menus/${restaurantId}/${fname}`,
+      Body: Buffer.concat(chunks), // concatinating all chunks
+      ContentEncoding: fEncoding, // optional
+      ContentType: ftype, // required
+    };
+
+    // we are sending buffer data to s3.
+    s3.upload(params, (err, s3res) => {
+      if (err) {
+        res.send({ err, status: "error" });
+      } else {
+        res.send({
+          //   data: s3res,
+          status: "success",
+          msg: "Menu file successfully uploaded.",
+        });
+      }
+    });
+  });
+
+  return req.pipe(busboy);
+};

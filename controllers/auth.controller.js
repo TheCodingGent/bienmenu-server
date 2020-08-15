@@ -1,4 +1,5 @@
 const config = require("../config/auth.config");
+const moment = require("moment");
 const db = require("../models");
 const User = db.user;
 const Role = db.role;
@@ -9,6 +10,7 @@ var bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const { google } = require("googleapis");
+const { Console } = require("console");
 const OAuth2 = google.auth.OAuth2;
 
 // stripe setup to update with production key
@@ -28,7 +30,7 @@ exports.signup = (req, res) => {
 
   user.save((err, user) => {
     if (err) {
-      res.status(500).send({ message: err });
+      res.status(500).send({ err, status: "error" });
       console.log("Failed to register user: " + err);
       return;
     }
@@ -40,7 +42,7 @@ exports.signup = (req, res) => {
         },
         (err, roles) => {
           if (err) {
-            res.status(500).send({ message: err });
+            res.status(500).send({ err, status: "error" });
             console.log("Failed to register user: " + err);
             return;
           }
@@ -48,12 +50,15 @@ exports.signup = (req, res) => {
           user.roles = roles.map((role) => role._id);
           user.save((err) => {
             if (err) {
-              res.status(500).send({ message: err });
+              res.status(500).send({ err, status: "error" });
               console.log("Failed to register user: " + err);
               return;
             }
 
-            res.send({ message: "User was registered successfully!" });
+            res.send({
+              status: "success",
+              msg: "User was registered successfully!",
+            });
             console.log("User registered successfully: " + user.username);
           });
         }
@@ -62,18 +67,21 @@ exports.signup = (req, res) => {
       Role.findOne({ name: "user" }, (err, role) => {
         //if no roles are provided, set the default role to be user
         if (err) {
-          res.status(500).send({ message: err });
+          res.status(500).send({ err, status: "error" });
           return;
         }
 
         user.roles = [role._id];
         user.save((err) => {
           if (err) {
-            res.status(500).send({ message: err });
+            res.status(500).send({ err, status: "error" });
             return;
           }
 
-          res.send({ message: "User was registered successfully!" });
+          res.send({
+            status: "success",
+            msg: "User was registered successfully!",
+          });
           console.log("User registered successfully: " + user.username);
         });
       });
@@ -82,360 +90,174 @@ exports.signup = (req, res) => {
 };
 
 exports.signin = async (req, res) => {
-  console.log("Received request to login user: " + req.body.username);
-  User.findOne({
-    username: req.body.username,
-  })
-    .populate("roles", "-__v")
-    .populate("restaurants", ["_id", "name"])
-    .exec((err, user) => {
-      if (err) {
-        res.status(500).send({ message: err });
-        return;
-      }
+  const username = req.body.username;
+  var user;
+  var customer;
+  var subscriptionId;
+  var activeProducts = [];
 
-      if (!user) {
-        return res.status(404).send({ message: "User Not found." });
-      }
+  console.log(`Received request to login user ${username}`);
 
-      var passwordIsValid = bcrypt.compareSync(
-        req.body.password,
-        user.password
-      );
+  try {
+    // get the user from the database
+    user = await User.findOne({
+      $or: [{ username: req.body.username }, { email: req.body.username }],
+    })
+      .populate("roles", "-__v")
+      .exec();
+  } catch (err) {
+    console.log(
+      `An error occurred while retrieving user ${username} from the database`
+    );
+    res.status(500).send({ err, status: "error" });
+    return;
+  }
 
-      if (!passwordIsValid) {
-        return res.status(401).send({
-          accessToken: null,
-          message: "Invalid Password!",
-        });
-      }
+  if (!user) {
+    return res.status(404).send({ status: "error", msg: "User not found" });
+  }
 
-      var token = jwt.sign({ id: user.id }, config.secret, {
-        expiresIn: 86400, // 24 hours
+  // correct password
+  var passwordIsValid = bcrypt.compareSync(req.body.password, user.password);
+
+  if (!passwordIsValid) {
+    return res.status(401).send({
+      accessToken: null,
+      message: "Invalid password!",
+    });
+  }
+
+  var token = jwt.sign({ id: user.id }, config.secret, {
+    expiresIn: 86400, // 24 hours
+  });
+
+  // check if this is a stripe customer
+  try {
+    customer = await stripe.customers
+      .list({ email: user.email, limit: 1 })
+      .then((customers) => {
+        return customers.data[0];
       });
+  } catch (err) {
+    console.log(
+      `An error occurred while retrieving customer for ${user.email} from stripe`
+    );
+    res.status(500).send({ err, status: "error" });
+    return;
+  }
 
-      // check if user has a stripe customerId
-      if (!user.stripeCustomerId) {
-        console.log("User does not have a customer Id in the database");
+  //customer in stripe found and does not have more than one active subscription
+  if (customer) {
+    console.log(
+      `Number of customer subscriptions: ${customer.subscriptions.data.length}`
+    );
 
-        stripe.customers
-          .list({ email: user.email, limit: 1 })
-          .then((customers) => {
-            // check if customer is found or not
-            if (Array.isArray(customers.data) && customers.data.length) {
-              //customer is found in stripe but no id in db, add customer id to our db
-              user.stripeCustomerId = customers.data[0].id;
-              stripe.subscriptions
-                .list({
-                  customer: user.stripeCustomerId,
-                  limit: 3,
-                  status: "active",
-                })
-                .then((subscriptions) => {
-                  // check if any subscriptions found
-                  console.log(subscriptions.data.length);
-                  if (
-                    Array.isArray(subscriptions.data) &&
-                    subscriptions.data.length
-                  ) {
-                    //subscriptions found
-                    for (let i = 0; i < subscriptions.data.length; i++) {
-                      let subItems = subscriptions.data[i].items.data;
-                      for (let j = 0; j < subItems.length; j++) {
-                        // for each subscription, go through the sub items and add the active product ids to the user
-                        if (subItems[i].price.active === true) {
-                          user.activeProducts.push(subItems[i].price.id);
-                        }
-                      }
-                    }
-                  }
-                  //update the users stripe customer id and their active products
-                  user.save((err) => {
-                    if (err) {
-                      console.log(
-                        "Failed to update user customerId and active products"
-                      );
-                    } else {
-                      console.log(
-                        `CustomerId and active products updated successfully for usr ${user.username}`
-                      );
-                    }
-                  });
+    if (!user.stripeCustomerId) {
+      user.stripeCustomerId = customer.id;
+    }
 
-                  var authorities = [];
+    try {
+      // we assume that each customer can only have one active subscription at a time
+      var subscription = await stripe.subscriptions
+        .list({
+          customer: customer.id,
+          limit: 1,
+          status: "active",
+        })
+        .then((subscriptions) => {
+          return subscriptions.data[0];
+        });
 
-                  for (let i = 0; i < user.roles.length; i++) {
-                    authorities.push(
-                      "ROLE_" + user.roles[i].name.toUpperCase()
-                    );
-                  }
-
-                  res.status(200).send({
-                    firstName: user.firstName,
-                    lastName: user.lastName,
-                    username: user.username,
-                    email: user.email,
-                    roles: authorities,
-                    restaurants: user.restaurants,
-                    activeProducts: user.activeProducts,
-                    accessToken: token,
-                  });
-                })
-                .catch((error) => {
-                  console.error(error);
-                });
-            } else {
-              var authorities = [];
-
-              for (let i = 0; i < user.roles.length; i++) {
-                authorities.push("ROLE_" + user.roles[i].name.toUpperCase());
-              }
-
-              res.status(200).send({
-                firstName: user.firstName,
-                lastName: user.lastName,
-                username: user.username,
-                email: user.email,
-                roles: authorities,
-                restaurants: user.restaurants,
-                activeProducts: user.activeProducts,
-                accessToken: token,
-              });
-            } // else customer is not in db nor in stripe so they are on a basic plan
-          })
-          .catch((error) => console.error(error));
-      } else {
-        // stripe customer Id already exists only update their subscription products on login
-        stripe.subscriptions
+      // if no active subscriptions are found check if there are any subscriptions in trial
+      if (!subscription) {
+        console.log(
+          `No active subscriptions found checking to see if customer has any active trials`
+        );
+        subscription = await stripe.subscriptions
           .list({
             customer: user.stripeCustomerId,
-            limit: 3,
-            status: "active",
+            limit: 1,
+            status: "trialing",
           })
           .then((subscriptions) => {
-            // check if any subscriptions found
-            console.log(subscriptions.data.length);
-            if (
-              Array.isArray(subscriptions.data) &&
-              subscriptions.data.length
-            ) {
-              //subscriptions found
-              for (let i = 0; i < subscriptions.data.length; i++) {
-                let subItems = subscriptions.data[i].items.data;
-                for (let j = 0; j < subItems.length; j++) {
-                  // for each subscription, go through the sub items and add the active product ids to the user
-                  if (subItems[i].price.active === true) {
-                    user.activeProducts.push(subItems[i].price.id);
-                  }
-                }
-              }
-            }
-            //update the users stripe customer id and their active products
-            user.save((err) => {
-              if (err) {
-                console.log(
-                  "Failed to update user customerId and active products"
-                );
-              } else {
-                console.log(
-                  `CustomerId and active products updated successfully for usr ${user.username}`
-                );
-              }
-            });
-
-            var authorities = [];
-
-            for (let i = 0; i < user.roles.length; i++) {
-              authorities.push("ROLE_" + user.roles[i].name.toUpperCase());
-            }
-
-            res.status(200).send({
-              firstName: user.firstName,
-              lastName: user.lastName,
-              username: user.username,
-              email: user.email,
-              roles: authorities,
-              restaurants: user.restaurants,
-              activeProducts: user.activeProducts,
-              accessToken: token,
-            });
-          })
-          .catch((error) => {
-            console.error(error);
+            // assume only the first subscription is valid
+            return subscriptions.data[0];
           });
       }
-    });
-};
 
-// Password reset handling
-const oauth2Client = new OAuth2(
-  process.env.GOOGLE_CLIENT_ID, // ClientID
-  process.env.GOOGLE_CLIENT_SECRET, // Client Secret
-  process.env.GOOGLE_REDIRECT_URL // Redirect URL
-);
-
-oauth2Client.setCredentials({
-  refresh_token: process.env.GOOGLE_CLIENT_REFRESH_TOKEN,
-});
-const accessToken = oauth2Client.getAccessToken();
-
-exports.resetpassword = (req, res) => {
-  console.log("Received request to reset password for: " + req.body.email);
-  if (!req.body.email) {
-    return res.status(500).json({ message: "Email is required" });
-  }
-  User.findOne({
-    email: req.body.email,
-  }).exec((err, user) => {
-    if (err) {
-      res.status(500).send({ message: err });
+      if (subscription) {
+        subscriptionId = subscription.id;
+      }
+    } catch (err) {
+      console.log(
+        `An error occurred while retrieving subscriptions for ${user.email} from stripe: ${err}`
+      );
+      res.status(500).send({ err, status: "error" });
       return;
     }
 
-    if (!user) {
-      return res.status(404).json({ message: "Email does not exist" });
-    }
+    // if subscriptions found update the active products
+    if (subscriptionId) {
+      try {
+        var subscription = await stripe.subscriptions.retrieve(subscriptionId);
 
-    var resettoken = new PasswordResetToken({
-      _userId: user._id,
-      resettoken: crypto.randomBytes(16).toString("hex"),
-    });
+        // add all active products under the subscription
+        for (let i = 0; i < subscription.items.data.length; i++) {
+          let subItem = subscription.items.data[i];
 
-    resettoken.save(function (err) {
-      if (err) {
-        return res.status(500).send({ message: err.message });
-      }
-      PasswordResetToken.find({
-        _userId: user._id,
-        resettoken: { $ne: resettoken.resettoken },
-      })
-        .remove()
-        .exec();
-      res
-        .status(200)
-        .json({ message: "Reset password request processed successfully." });
-
-      // send a email with the reset link
-      const smtpTransport = nodemailer.createTransport({
-        host: "smtp.gmail.com",
-        port: 465,
-        secure: true,
-        auth: {
-          type: "OAuth2",
-          user: "bienmenuapp@gmail.com",
-          clientId: process.env.GOOGLE_CLIENT_ID,
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-          refreshToken: process.env.GOOGLE_CLIENT_REFRESH_TOKEN,
-          accessToken: accessToken,
-        },
-      });
-      var mailOptions = {
-        to: user.email,
-        from: "bienmenuapp@gmail.com",
-        subject: "BienMenu Account Password Reset",
-        text:
-          "You are receiving this email because you (or someone else) have requested the reset of the password on your BienMenu admin account.\n\n" +
-          "Please click on the following link, or paste this into your browser to complete the reset process:\n\n" +
-          "http://localhost:4200/reset-password/" +
-          resettoken.resettoken +
-          "\n\n" +
-          "If you did not request this, please ignore this email and your password will remain unchanged.\n",
-      };
-
-      smtpTransport.sendMail(mailOptions, (error, response) => {
-        error ? console.log(error) : console.log(response);
-        smtpTransport.close();
-      });
-    });
-  });
-};
-
-// set a new password
-exports.newPassword = (req, res) => {
-  console.log(
-    "Received request to update password for: " + req.body.resettoken
-  );
-  PasswordResetToken.findOne({ resettoken: req.body.resettoken }).exec(
-    (err, userToken) => {
-      if (err) {
-        res.status(500).send({ message: err });
-        return;
-      }
-
-      if (!userToken) {
-        return res.status(409).json({ message: "Token has expired" });
-      }
-      console.log("Updating user in database...");
-      User.findOne({
-        _id: userToken._userId,
-      }).exec((err, user) => {
-        if (err) {
-          res.status(500).send({ message: err });
-          return;
+          if (subItem.price.active === true) {
+            activeProducts.push(subItem.price.product);
+          }
         }
 
-        if (!user) {
-          return res.status(404).json({ message: "User does not exist" });
-        }
-        user.password = bcrypt.hashSync(req.body.newPassword, 8);
-        user.save(function (err) {
-          if (err) {
-            return res
-              .status(400)
-              .json({ message: "Failed to reset Password..." });
-          } else {
-            userToken.remove();
-            console.log("Password upadted successfully for " + user.username);
-            return res
-              .status(200)
-              .json({ message: "Password was reset successfully" });
-          }
-        });
-      });
-    }
-  );
-};
-
-// return if member is a plus member
-// needs to be called after verifyPlusMember middleware
-exports.plusMemberVerification = (req, res) => {
-  // user has been verified to be logged
-  // verify the user has a plus subscription
-  User.findById(req.userId).exec((err, user) => {
-    if (err) {
-      res.status(500).send({ message: err });
-      return;
-    }
-
-    // PLUS product id: prod_HjAe5I8ubn6eLY
-    for (let i = 0; i < user.activeProducts.length; i++) {
-      if (
-        user.activeProducts[i] === process.env.STRIPE_PLUS_PRICE_MONTHLY ||
-        user.activeProducts[i] === process.env.STRIPE_PLUS_PRICE_YEARLY
-      ) {
-        console.log("User has plus membership");
-
-        // generate a token and return it
-        var plustoken = jwt.sign(
-          { id: user.id, product: user.activeProducts[i] },
-          config.secret,
-          {
-            expiresIn: 86400, // 24 hours
-          }
+        // set the user active products
+        user.activeProducts = activeProducts;
+      } catch (err) {
+        console.log(
+          `An error occurred while retrieving subscription ${subscriptionId} from stripe: ${err}`
         );
-
-        res.status(200).send({
-          subscriptionToken: plustoken,
-        });
+        res.status(500).send({ err, status: "error" });
         return;
       }
+    } else {
+      console.log(`No subscriptions found for user ${user.username}`);
+      // if no active subscriptions set the user back to basic
+      user.activeProducts = [];
     }
+  }
 
-    res.status(403).send({
-      message:
-        "This view requires a plus membership! Please upgrade to access it.",
-    });
-    return;
+  user = updateUserBasedOnActiveProducts(user, user.activeProducts);
+
+  //update the users stripe customer id and their active products
+  user.save((err) => {
+    if (err) {
+      console.log(
+        `An error occurred while updating user data for ${user.username}: ${err}`
+      );
+      res.status(500);
+      res.send({ status: "error", err });
+    } else {
+      console.log(
+        `CustomerId and active products updated successfully for user ${user.username}`
+      );
+    }
+  });
+
+  var authorities = [];
+
+  for (let i = 0; i < user.roles.length; i++) {
+    authorities.push("ROLE_" + user.roles[i].name.toUpperCase());
+  }
+
+  res.status(200).send({
+    status: "success",
+    firstName: user.firstName,
+    lastName: user.lastName,
+    username: user.username,
+    email: user.email,
+    accessToken: token,
+    roles: authorities,
+    restaurants: user.restaurants,
   });
 };
 
@@ -443,38 +265,167 @@ exports.plusMemberVerification = (req, res) => {
  * Helpers
  ****************************/
 
-getActiveProducts = (customerId) => {
-  var activeProducts = [];
-  stripe.subscriptions
-    .list({
-      customer: customerId,
-      limit: 3,
-      status: "active",
-    })
-    .then((subscriptions) => {
-      // check if any subscriptions found
-      console.log(subscriptions.data.length);
-      if (Array.isArray(subscriptions.data) && subscriptions.data.length) {
-        console.log("subscriptions found");
-        //subscriptions found
-        for (let i = 0; i < subscriptions.data.length; i++) {
-          let subItems = subscriptions.data[i].items.data;
-          console.log(`subitems ${subItems}`);
-          for (let j = 0; j < subItems.length; j++) {
-            // for each subscription, go through the sub items and add the active product ids to the user
-            if (subItems[i].price.active === true) {
-              console.log("found active item");
-              console.log(subItems[i].price.id);
+updateUserBasedOnActiveProducts = (user, activeProducts) => {
+  // Basic
+  if (!activeProducts.length) {
+    user.maxRestaurantCount = 1;
+    user.maxMenuUpdateCount = 1;
+    user.maxMenusPerRestaurant = 4;
 
-              activeProducts.push(subItems[i].price.id);
-            }
-          }
-        }
-      }
-      return activeProducts;
-    })
-    .catch((error) => {
-      console.error(error);
-      return activeProducts;
-    });
+    // update user expiry if current time is past their expiry token reset their menu update count for another month
+    const currentTime = moment(moment().format());
+    if (currentTime.isAfter(user.featuresExpiryDate)) {
+      console.log(
+        `Expiry has been met, resetting current menu update count for user ${user.username}`
+      );
+      //reset user menu update count
+      user.currentMenuUpdateCount = 0;
+      user.featuresExpiryDate = moment(currentTime).add(
+        // add another month
+        1,
+        "month"
+      );
+    }
+    return user;
+  }
+
+  // premium would be checked first
+
+  // check for plus
+  if (activeProducts.includes(process.env.STRIPE_PLUS_PRODUCT)) {
+    user.maxRestaurantCount = 3;
+    user.maxMenuUpdateCount = -1;
+    user.maxMenusPerRestaurant = 8;
+
+    return user;
+  }
 };
+
+// Password reset handling
+// const oauth2Client = new OAuth2(
+//   process.env.GOOGLE_CLIENT_ID, // ClientID
+//   process.env.GOOGLE_CLIENT_SECRET, // Client Secret
+//   process.env.GOOGLE_REDIRECT_URL // Redirect URL
+// );
+
+// oauth2Client.setCredentials({
+//   refresh_token: process.env.GOOGLE_CLIENT_REFRESH_TOKEN,
+// });
+// const accessToken = oauth2Client.getAccessToken();
+
+// exports.resetpassword = (req, res) => {
+//   console.log("Received request to reset password for: " + req.body.email);
+//   if (!req.body.email) {
+//     return res.status(500).json({ message: "Email is required" });
+//   }
+//   User.findOne({
+//     email: req.body.email,
+//   }).exec((err, user) => {
+//     if (err) {
+//       res.status(500).send({ message: err });
+//       return;
+//     }
+
+//     if (!user) {
+//       return res.status(404).json({ message: "Email does not exist" });
+//     }
+
+//     var resettoken = new PasswordResetToken({
+//       _userId: user._id,
+//       resettoken: crypto.randomBytes(16).toString("hex"),
+//     });
+
+//     resettoken.save(function (err) {
+//       if (err) {
+//         return res.status(500).send({ message: err.message });
+//       }
+//       PasswordResetToken.find({
+//         _userId: user._id,
+//         resettoken: { $ne: resettoken.resettoken },
+//       })
+//         .remove()
+//         .exec();
+//       res
+//         .status(200)
+//         .json({ message: "Reset password request processed successfully." });
+
+//       // send a email with the reset link
+//       const smtpTransport = nodemailer.createTransport({
+//         host: "smtp.gmail.com",
+//         port: 465,
+//         secure: true,
+//         auth: {
+//           type: "OAuth2",
+//           user: "bienmenuapp@gmail.com",
+//           clientId: process.env.GOOGLE_CLIENT_ID,
+//           clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+//           refreshToken: process.env.GOOGLE_CLIENT_REFRESH_TOKEN,
+//           accessToken: accessToken,
+//         },
+//       });
+//       var mailOptions = {
+//         to: user.email,
+//         from: "bienmenuapp@gmail.com",
+//         subject: "BienMenu Account Password Reset",
+//         text:
+//           "You are receiving this email because you (or someone else) have requested the reset of the password on your BienMenu admin account.\n\n" +
+//           "Please click on the following link, or paste this into your browser to complete the reset process:\n\n" +
+//           "http://localhost:4200/reset-password/" +
+//           resettoken.resettoken +
+//           "\n\n" +
+//           "If you did not request this, please ignore this email and your password will remain unchanged.\n",
+//       };
+
+//       smtpTransport.sendMail(mailOptions, (error, response) => {
+//         error ? console.log(error) : console.log(response);
+//         smtpTransport.close();
+//       });
+//     });
+//   });
+// };
+
+// // set a new password
+// exports.newPassword = (req, res) => {
+//   console.log(
+//     "Received request to update password for: " + req.body.resettoken
+//   );
+//   PasswordResetToken.findOne({ resettoken: req.body.resettoken }).exec(
+//     (err, userToken) => {
+//       if (err) {
+//         res.status(500).send({ message: err });
+//         return;
+//       }
+
+//       if (!userToken) {
+//         return res.status(409).json({ message: "Token has expired" });
+//       }
+//       console.log("Updating user in database...");
+//       User.findOne({
+//         _id: userToken._userId,
+//       }).exec((err, user) => {
+//         if (err) {
+//           res.status(500).send({ message: err });
+//           return;
+//         }
+
+//         if (!user) {
+//           return res.status(404).json({ message: "User does not exist" });
+//         }
+//         user.password = bcrypt.hashSync(req.body.newPassword, 8);
+//         user.save(function (err) {
+//           if (err) {
+//             return res
+//               .status(400)
+//               .json({ message: "Failed to reset Password..." });
+//           } else {
+//             userToken.remove();
+//             console.log("Password upadted successfully for " + user.username);
+//             return res
+//               .status(200)
+//               .json({ message: "Password was reset successfully" });
+//           }
+//         });
+//       });
+//     }
+//   );
+// };

@@ -21,6 +21,12 @@ module.exports = function (app) {
   );
 
   app.get(
+    "/api/content/restaurants",
+    [authJwt.verifyToken],
+    controller.getUserRestaurants
+  );
+
+  app.get(
     "/api/content/features/update-allowed",
     [authJwt.verifyToken],
     controller.checkMenuUpdateAllowed
@@ -48,5 +54,11 @@ module.exports = function (app) {
     "/api/content/features/add-restaurant-allowed",
     [authJwt.verifyToken],
     controller.checkRestaurantAddAllowed
+  );
+
+  app.get(
+    "/api/content/features/max-menu-count-allowed",
+    [authJwt.verifyToken],
+    controller.getMaxMenuCountAllowed
   );
 };

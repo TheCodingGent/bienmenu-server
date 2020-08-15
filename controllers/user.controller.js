@@ -3,22 +3,32 @@ const moment = require("moment");
 const User = db.user;
 
 exports.allAccess = (req, res) => {
-  res.status(200).send("Public Content.");
+  res.status(200).send({ status: "success", msg: "Public Content." });
 };
 
 exports.userContent = (req, res) => {
-  res.status(200).send("User Content.");
+  res.status(200).send({ status: "success", msg: "User Content." });
 };
 
 exports.adminContent = (req, res) => {
-  res.status(200).send("Admin Content.");
+  res.status(200).send({ status: "success", msg: "Admin Content." });
+};
+
+exports.getUserRestaurants = (req, res) => {
+  User.findById(req.userId).exec((err, user) => {
+    if (err) {
+      res.status(500).send({ status: "error", err });
+      return;
+    }
+    res.status(200).send({ status: "success", restaurants: user.restaurants });
+  });
 };
 
 // called once user logs in to check if a reset of their feature expiry is needed
 exports.updateUserFeatureExpiryData = (req, res) => {
   User.findById(req.userId).exec((err, user) => {
     if (err) {
-      res.status(500).send({ message: err });
+      res.status(500).send({ status: "error", err });
       return;
     }
 
@@ -36,20 +46,19 @@ exports.updateUserFeatureExpiryData = (req, res) => {
       user.save((err) => {
         if (err) {
           console.log("failed to update user expiry date");
-          res.status(500).send({ message: err });
+          res.status(500).send({ status: "error", err });
           return;
         }
         console.log(
           `User expiry token updated successfully to ${user.featuresExpiryDate}`
         );
-        res
-          .status(200)
-          .send(
-            `User expiry token updated successfully to ${user.featuresExpiryDate}`
-          );
+        res.status(200).send({
+          status: "success",
+          msg: `User expiry token updated successfully to ${user.featuresExpiryDate}`,
+        });
       });
     } else {
-      res.status(200).send("No update needed");
+      res.status(200).send({ status: "success", msg: "No update needed" });
     }
   });
 };
@@ -58,23 +67,25 @@ exports.updateUserFeatureExpiryData = (req, res) => {
 exports.checkMenuUpdateAllowed = (req, res) => {
   User.findById(req.userId).exec((err, user) => {
     if (err) {
-      res.status(500).send({ message: err });
+      res.status(500).send({ status: "error", err });
       return;
     }
 
-    //user is allowed to update menu
-    console.log(`Current user update count ${user.currentMenuUpdateCount}`);
-    console.log(`Current user expiry ${user.featuresExpiryDate}`);
-
-    if (user.currentMenuUpdateCount < user.maxMenuUpdateCount) {
+    if (
+      user.maxMenuUpdateCount === -1 ||
+      user.currentMenuUpdateCount < user.maxMenuUpdateCount
+    ) {
       console.log(`User ${user.username} is allowed to update`);
-      res.status(200).send("User is allowed to update menu");
+      res
+        .status(200)
+        .send({ status: "success", msg: "User is allowed to update menu" });
       return;
     } else {
       console.log(`User ${user.username} is not allowed to update`);
       //user current menu update count exceeds allowed limit
       res.status(403).send({
-        message: "Maximum number of allowed updates per month exceeded",
+        status: "error",
+        msg: "Maximum number of allowed updates per month exceeded",
       });
     }
   });
@@ -83,7 +94,7 @@ exports.checkMenuUpdateAllowed = (req, res) => {
 exports.updateMenuUpdateCount = (req, res) => {
   User.findById(req.userId).exec((err, user) => {
     if (err) {
-      res.status(500).send({ message: err });
+      res.status(500).send({ status: "error", err });
       return;
     }
 
@@ -94,12 +105,15 @@ exports.updateMenuUpdateCount = (req, res) => {
         console.log(
           `Failed to update current menu count for user ${user.username} with error: ${err}`
         );
-        res.status(500).send({ message: err });
+        res.status(500).send({ status: "error", err });
       }
       console.log(
         `User ${user.username} menu update count updated successfully`
       );
-      res.status(200).send("User menu update count was updated successfully");
+      res.status(200).send({
+        status: "success",
+        msg: "User menu update count was updated successfully",
+      });
     });
   });
 };
@@ -107,7 +121,7 @@ exports.updateMenuUpdateCount = (req, res) => {
 exports.updateRestaurantCount = (req, res) => {
   User.findById(req.userId).exec((err, user) => {
     if (err) {
-      res.status(500).send({ message: err });
+      res.status(500).send({ status: "error", err });
       return;
     }
 
@@ -118,12 +132,15 @@ exports.updateRestaurantCount = (req, res) => {
         console.log(
           `Failed to update current restaurant count for user ${user.username} with error: ${err}`
         );
-        res.status(500).send({ message: err });
+        res.status(500).send({ status: "error", err });
       }
       console.log(
         `User ${user.username} restaurant count updated successfully`
       );
-      res.status(200).send("User restaurant count was updated successfully");
+      res.status(200).send({
+        status: "success",
+        msg: "User restaurant count was updated successfully",
+      });
     });
   });
 };
@@ -131,7 +148,10 @@ exports.updateRestaurantCount = (req, res) => {
 exports.checkRestaurantAddAllowed = (req, res) => {
   User.findById(req.userId).exec((err, user) => {
     if (err) {
-      res.status(500).send({ message: err });
+      console.log(
+        `Failed to check restaurant allowed for user ${req.userId} with error: ${err}`
+      );
+      res.status(500).send({ status: "error", err });
       return;
     }
 
@@ -139,7 +159,9 @@ exports.checkRestaurantAddAllowed = (req, res) => {
 
     if (user.currentRestaurantCount < user.maxRestaurantCount) {
       console.log(`User ${user.username} is allowed to add a new restaurant`);
-      res.status(200).send("Restaurant addition granted");
+      res
+        .status(200)
+        .send({ status: "success", msg: "Restaurant addition granted" });
       return;
     } else {
       console.log(
@@ -147,8 +169,27 @@ exports.checkRestaurantAddAllowed = (req, res) => {
       );
       //user current menu update count exceeds allowed limit
       res.status(403).send({
-        message: "Maximum number of allowed restaurants exceeded",
+        status: "error",
+        msg: "Maximum number of allowed restaurants exceeded",
       });
     }
+  });
+};
+
+exports.getMaxMenuCountAllowed = (req, res) => {
+  User.findById(req.userId).exec((err, user) => {
+    if (err) {
+      console.log(
+        `Failed to get max menu allowed count for user ${req.userId} with error: ${err}`
+      );
+      res.status(500).send({ status: "error", err });
+      return;
+    }
+
+    res.status(200).send({
+      status: "success",
+      maxMenusPerRestaurant: user.maxMenusPerRestaurant,
+    });
+    return;
   });
 };
