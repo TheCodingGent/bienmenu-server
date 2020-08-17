@@ -60,7 +60,7 @@ exports.getRestaurantById = (req, res) => {
       });
     } else {
       res.send(restaurant);
-      console.log(`Retrieved restaurant: ${restaurantId} successfully.`);
+      console.log(`Retrieved restaurant: ${restaurant.name} successfully.`);
     }
   });
 };
