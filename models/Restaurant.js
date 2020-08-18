@@ -22,6 +22,7 @@ const restaurantSchema = new Schema({
   },
   rating: { type: Number, default: 4.5 },
   color: { type: String, default: "#009688" },
+  tracingEnabled: { type: Boolean, default: false },
 });
 
 module.exports = mongoose.model("Restaurant", restaurantSchema);

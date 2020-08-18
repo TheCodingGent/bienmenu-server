@@ -10,6 +10,7 @@ db.role = require("./Role");
 db.restaurant = require("./Restaurant");
 db.menu = require("./Menu");
 db.resetToken = require("./PasswordResetToken");
+db.customer = require("./Customer");
 
 db.ROLES = ["user", "admin", "moderator"];
 

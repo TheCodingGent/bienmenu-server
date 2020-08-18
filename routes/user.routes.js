@@ -61,4 +61,10 @@ module.exports = function (app) {
     [authJwt.verifyToken],
     controller.getMaxMenuCountAllowed
   );
+
+  app.get(
+    "/api/content/features/has-contact-tracing",
+    [authJwt.verifyToken],
+    controller.getUserHasContactTracing
+  );
 };

@@ -193,3 +193,27 @@ exports.getMaxMenuCountAllowed = (req, res) => {
     return;
   });
 };
+
+exports.getUserHasContactTracing = (req, res) => {
+  User.findById(req.userId).exec((err, user) => {
+    if (err) {
+      console.log(
+        `Failed to get max menu allowed count for user ${req.userId} with error: ${err}`
+      );
+      res.status(500).send({ status: "error", err });
+      return;
+    }
+
+    if (user.hasContactTracing) {
+      res.status(200).send({
+        status: "success",
+        msg: "user has contact tracing",
+      });
+    } else {
+      res.status(403).send({
+        status: "error",
+        msg: "user does not have contact tracing",
+      });
+    }
+  });
+};

@@ -49,6 +49,7 @@ require("./routes/auth.routes")(app);
 require("./routes/user.routes")(app);
 require("./routes/restaurant.routes")(app);
 require("./routes/file.routes")(app);
+require("./routes/customer.routes")(app);
 
 server.listen(port, () => {
   console.log("Listening on port " + port);

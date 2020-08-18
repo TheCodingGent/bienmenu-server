@@ -349,3 +349,51 @@ exports.getMenuMaxCountReached = (req, res) => {
     });
   });
 };
+
+exports.getContactTracingEnabled = (req, res) => {
+  const restaurantId = req.params.id;
+
+  Restaurant.findById(restaurantId).exec((err, restaurant) => {
+    if (err) {
+      res.status(500).send({ status: "error", err });
+      return;
+    }
+
+    res.status(200).send({
+      status: "success",
+      msg: "User is allowed to add more menus",
+      tracingEnabled: restaurant.tracingEnabled,
+    });
+  });
+};
+
+exports.updateContactTracing = (req, res) => {
+  const restaurantId = req.params.id;
+
+  Restaurant.findById(restaurantId).exec((err, restaurant) => {
+    if (err) {
+      res.status(500).send({ status: "error", err });
+      return;
+    }
+
+    restaurant.tracingEnabled = req.body.tracingEnabled;
+
+    restaurant.save(function (err, restaurant) {
+      if (err) {
+        console.log(
+          `An error occurred while updating contact tracing for restaurant ${restaurant.name}: ${err}`
+        );
+        res.status(500);
+        res.send({ status: "error", err });
+      } else {
+        res.send({
+          status: "success",
+          msg: "Restaurant updated successfully!",
+        });
+        console.log(
+          `Updated restaurant ${restaurantId} successfully for with value of contact tracing ${req.body.tracingEnabled}`
+        );
+      }
+    });
+  });
+};

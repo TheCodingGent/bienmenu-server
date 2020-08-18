@@ -11,11 +11,20 @@ module.exports = function (app) {
   });
 
   // GET
-  app.get("/restaurants", controller.getRestaurants);
+  app.get(
+    "/restaurants",
+    [authJwt.verifyToken, authJwt.isAdmin],
+    controller.getRestaurants
+  );
 
   app.get("/restaurants/:id", controller.getRestaurantById);
 
   app.get("/restaurants/menus/:id", controller.getAllMenusForRestaurant);
+
+  app.get(
+    "/restaurants/get-contact-tracing/:id",
+    controller.getContactTracingEnabled
+  );
 
   app.get(
     "/restaurants/menu-max-count-reached/:id",
@@ -23,9 +32,11 @@ module.exports = function (app) {
     controller.getMenuMaxCountReached
   );
 
+  app.get("/restaurants/menus/:id", controller.getAllMenusForRestaurant);
+
   // ADD
 
-  app.post("/restaurants/add", controller.addRestaurant);
+  app.post("/restaurants/add", [authJwt.isAdmin], controller.addRestaurant);
 
   app.post(
     "/restaurants/add/user",
@@ -33,15 +44,33 @@ module.exports = function (app) {
     controller.addRestaurantForUser
   );
 
-  app.post("/restaurants/menus/add/:id", controller.addMenuToRestaurant);
+  app.post(
+    "/restaurants/menus/add/:id",
+    [authJwt.verifyToken],
+    controller.addMenuToRestaurant
+  );
 
   // UPDATE
 
-  app.post("/restaurants/menus/update/:id", controller.updateMenuTimestamp);
+  app.post(
+    "/restaurants/menus/update/:id",
+    [authJwt.verifyToken],
+    controller.updateMenuTimestamp
+  );
+
+  app.post(
+    "/restaurants/set-contact-tracing/:id",
+    [authJwt.verifyToken],
+    controller.updateContactTracing
+  );
 
   // DELETE
 
-  app.post("/restaurants/menus/delete/:id", controller.deleteMenuForRestaurant);
+  app.post(
+    "/restaurants/menus/delete/:id",
+    [authJwt.verifyToken],
+    controller.deleteMenuForRestaurant
+  );
 
   app.post(
     "/restaurants/delete/:id",

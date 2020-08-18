@@ -271,6 +271,7 @@ updateUserBasedOnActiveProducts = (user, activeProducts) => {
     user.maxRestaurantCount = 1;
     user.maxMenuUpdateCount = 1;
     user.maxMenusPerRestaurant = 4;
+    user.hasContactTracing = false;
 
     // update user expiry if current time is past their expiry token reset their menu update count for another month
     const currentTime = moment(moment().format());
@@ -296,6 +297,7 @@ updateUserBasedOnActiveProducts = (user, activeProducts) => {
     user.maxRestaurantCount = 3;
     user.maxMenuUpdateCount = -1;
     user.maxMenusPerRestaurant = 8;
+    user.hasContactTracing = true;
 
     return user;
   }
