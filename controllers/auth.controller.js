@@ -451,4 +451,6 @@ updateUserBasedOnActiveProducts = (user, activeProducts) => {
 
     return user;
   }
+
+  return user;
 };
