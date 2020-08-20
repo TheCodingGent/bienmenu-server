@@ -217,3 +217,32 @@ exports.getUserHasContactTracing = (req, res) => {
     }
   });
 };
+
+exports.updateUserPlan = (req, res) => {
+  User.findById(req.userId).exec((err, user) => {
+    if (err) {
+      res.status(500).send({ status: "error", err });
+      return;
+    }
+
+    if (req.body.plan) {
+      user.plan = req.body.plan;
+    } else {
+      user.plan = "basic";
+    }
+
+    user.save((err) => {
+      if (err) {
+        console.log(
+          `Failed to update user plan for user ${user.username} with error: ${err}`
+        );
+        res.status(500).send({ status: "error", err });
+      }
+      console.log(`User ${user.username} plan updated successfully`);
+      res.status(200).send({
+        status: "success",
+        msg: "User rplan was updated successfully",
+      });
+    });
+  });
+};

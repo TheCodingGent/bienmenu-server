@@ -24,6 +24,7 @@ exports.signup = (req, res) => {
     lastName: req.body.lastName,
     username: req.body.username,
     email: req.body.email,
+    plan: req.body.plan,
     password: bcrypt.hashSync(req.body.password, 8),
     restaurants: [],
   });
@@ -104,6 +105,7 @@ exports.signin = async (req, res) => {
       $or: [{ username: req.body.username }, { email: req.body.username }],
     })
       .populate("roles", "-__v")
+      .populate("restaurants", "name")
       .exec();
   } catch (err) {
     console.log(
@@ -122,8 +124,9 @@ exports.signin = async (req, res) => {
 
   if (!passwordIsValid) {
     return res.status(401).send({
+      status: "error",
       accessToken: null,
-      message: "Invalid password!",
+      msg: "Invalid password!",
     });
   }
 
@@ -257,8 +260,153 @@ exports.signin = async (req, res) => {
     email: user.email,
     accessToken: token,
     roles: authorities,
+    plan: user.plan,
     restaurants: user.restaurants,
   });
+};
+
+// Password reset handling
+const oauth2Client = new OAuth2(
+  process.env.GOOGLE_CLIENT_ID, // ClientID
+  process.env.GOOGLE_CLIENT_SECRET, // Client Secret
+  process.env.GOOGLE_REDIRECT_URL // Redirect URL
+);
+
+oauth2Client.setCredentials({
+  refresh_token: process.env.GOOGLE_CLIENT_REFRESH_TOKEN,
+});
+const accessToken = oauth2Client.getAccessToken();
+
+exports.resetpassword = (req, res) => {
+  console.log(`Received request to reset password for: ${req.body.email}`);
+  if (!req.body.email) {
+    res.status(500);
+    res.send({ status: "error", msg: "Email is required" });
+    return;
+  }
+  User.findOne({
+    email: req.body.email,
+  }).exec((err, user) => {
+    if (err) {
+      res.status(500);
+      res.send({ status: "error", err });
+      return;
+    }
+
+    if (!user) {
+      res.status(404);
+      res.send({ status: "error", msg: "Email does not exist" });
+      return;
+    }
+
+    var resettoken = new PasswordResetToken({
+      _userId: user._id,
+      resettoken: crypto.randomBytes(16).toString("hex"),
+    });
+
+    resettoken.save(function (err) {
+      if (err) {
+        res.status(500);
+        res.send({ status: "error", err });
+        return;
+      }
+      PasswordResetToken.find({
+        _userId: user._id,
+        resettoken: { $ne: resettoken.resettoken },
+      })
+        .remove()
+        .exec();
+
+      res.status(200).json({
+        status: "success",
+        msg: "Reset password request processed successfully.",
+      });
+
+      // send a email with the reset link
+      const smtpTransport = nodemailer.createTransport({
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
+        auth: {
+          type: "OAuth2",
+          user: "bienmenuapp@gmail.com",
+          clientId: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          refreshToken: process.env.GOOGLE_CLIENT_REFRESH_TOKEN,
+          accessToken: accessToken,
+        },
+      });
+      var mailOptions = {
+        to: user.email,
+        from: "bienmenuapp@gmail.com",
+        subject: "BienMenu Account Password Reset",
+        text:
+          "You are receiving this email because you (or someone else) have requested the reset of the password on your BienMenu admin account.\n\n" +
+          "Please click on the following link, or paste this into your browser to complete the reset process:\n\n" +
+          "https://bienmenuapp.com/reset-password/" +
+          resettoken.resettoken +
+          "\n\n" +
+          "If you did not request this, please ignore this email and your password will remain unchanged.\n",
+      };
+
+      smtpTransport.sendMail(mailOptions, (error, response) => {
+        error ? console.log(error) : console.log(response);
+        smtpTransport.close();
+      });
+    });
+  });
+};
+
+// // set a new password
+exports.newPassword = (req, res) => {
+  console.log(
+    "Received request to update password for: " + req.body.resettoken
+  );
+  PasswordResetToken.findOne({ resettoken: req.body.resettoken }).exec(
+    (err, userToken) => {
+      if (err) {
+        res.status(500);
+        res.send({ status: "error", err });
+        return;
+      }
+
+      if (!userToken) {
+        res.status(409);
+        res.send({ status: "error", msg: "Token has expired" });
+        return;
+      }
+      console.log("Updating user in database...");
+      User.findOne({
+        _id: userToken._userId,
+      }).exec((err, user) => {
+        if (err) {
+          res.status(500);
+          res.send({ status: "error", err });
+          return;
+        }
+
+        if (!user) {
+          res.status(404);
+          res.send({ status: "error", msg: "User does not exist" });
+          return;
+        }
+        user.password = bcrypt.hashSync(req.body.newPassword, 8);
+        user.save(function (err) {
+          if (err) {
+            res.status(500);
+            res.send({ status: "error", err });
+            return;
+          } else {
+            userToken.remove();
+            console.log("Password upadted successfully for " + user.username);
+            return res
+              .status(200)
+              .json({ msg: "Password was reset successfully" });
+          }
+        });
+      });
+    }
+  );
 };
 
 /****************************
@@ -272,6 +420,7 @@ updateUserBasedOnActiveProducts = (user, activeProducts) => {
     user.maxMenuUpdateCount = 1;
     user.maxMenusPerRestaurant = 4;
     user.hasContactTracing = false;
+    user.plan = "basic";
 
     // update user expiry if current time is past their expiry token reset their menu update count for another month
     const currentTime = moment(moment().format());
@@ -298,136 +447,8 @@ updateUserBasedOnActiveProducts = (user, activeProducts) => {
     user.maxMenuUpdateCount = -1;
     user.maxMenusPerRestaurant = 8;
     user.hasContactTracing = true;
+    user.plan = "plus";
 
     return user;
   }
 };
-
-// Password reset handling
-// const oauth2Client = new OAuth2(
-//   process.env.GOOGLE_CLIENT_ID, // ClientID
-//   process.env.GOOGLE_CLIENT_SECRET, // Client Secret
-//   process.env.GOOGLE_REDIRECT_URL // Redirect URL
-// );
-
-// oauth2Client.setCredentials({
-//   refresh_token: process.env.GOOGLE_CLIENT_REFRESH_TOKEN,
-// });
-// const accessToken = oauth2Client.getAccessToken();
-
-// exports.resetpassword = (req, res) => {
-//   console.log("Received request to reset password for: " + req.body.email);
-//   if (!req.body.email) {
-//     return res.status(500).json({ message: "Email is required" });
-//   }
-//   User.findOne({
-//     email: req.body.email,
-//   }).exec((err, user) => {
-//     if (err) {
-//       res.status(500).send({ message: err });
-//       return;
-//     }
-
-//     if (!user) {
-//       return res.status(404).json({ message: "Email does not exist" });
-//     }
-
-//     var resettoken = new PasswordResetToken({
-//       _userId: user._id,
-//       resettoken: crypto.randomBytes(16).toString("hex"),
-//     });
-
-//     resettoken.save(function (err) {
-//       if (err) {
-//         return res.status(500).send({ message: err.message });
-//       }
-//       PasswordResetToken.find({
-//         _userId: user._id,
-//         resettoken: { $ne: resettoken.resettoken },
-//       })
-//         .remove()
-//         .exec();
-//       res
-//         .status(200)
-//         .json({ message: "Reset password request processed successfully." });
-
-//       // send a email with the reset link
-//       const smtpTransport = nodemailer.createTransport({
-//         host: "smtp.gmail.com",
-//         port: 465,
-//         secure: true,
-//         auth: {
-//           type: "OAuth2",
-//           user: "bienmenuapp@gmail.com",
-//           clientId: process.env.GOOGLE_CLIENT_ID,
-//           clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-//           refreshToken: process.env.GOOGLE_CLIENT_REFRESH_TOKEN,
-//           accessToken: accessToken,
-//         },
-//       });
-//       var mailOptions = {
-//         to: user.email,
-//         from: "bienmenuapp@gmail.com",
-//         subject: "BienMenu Account Password Reset",
-//         text:
-//           "You are receiving this email because you (or someone else) have requested the reset of the password on your BienMenu admin account.\n\n" +
-//           "Please click on the following link, or paste this into your browser to complete the reset process:\n\n" +
-//           "http://localhost:4200/reset-password/" +
-//           resettoken.resettoken +
-//           "\n\n" +
-//           "If you did not request this, please ignore this email and your password will remain unchanged.\n",
-//       };
-
-//       smtpTransport.sendMail(mailOptions, (error, response) => {
-//         error ? console.log(error) : console.log(response);
-//         smtpTransport.close();
-//       });
-//     });
-//   });
-// };
-
-// // set a new password
-// exports.newPassword = (req, res) => {
-//   console.log(
-//     "Received request to update password for: " + req.body.resettoken
-//   );
-//   PasswordResetToken.findOne({ resettoken: req.body.resettoken }).exec(
-//     (err, userToken) => {
-//       if (err) {
-//         res.status(500).send({ message: err });
-//         return;
-//       }
-
-//       if (!userToken) {
-//         return res.status(409).json({ message: "Token has expired" });
-//       }
-//       console.log("Updating user in database...");
-//       User.findOne({
-//         _id: userToken._userId,
-//       }).exec((err, user) => {
-//         if (err) {
-//           res.status(500).send({ message: err });
-//           return;
-//         }
-
-//         if (!user) {
-//           return res.status(404).json({ message: "User does not exist" });
-//         }
-//         user.password = bcrypt.hashSync(req.body.newPassword, 8);
-//         user.save(function (err) {
-//           if (err) {
-//             return res
-//               .status(400)
-//               .json({ message: "Failed to reset Password..." });
-//           } else {
-//             userToken.remove();
-//             console.log("Password upadted successfully for " + user.username);
-//             return res
-//               .status(200)
-//               .json({ message: "Password was reset successfully" });
-//           }
-//         });
-//       });
-//     }
-//   );
-// };

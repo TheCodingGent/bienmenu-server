@@ -21,11 +21,11 @@ module.exports = function (app) {
 
   app.post("/api/auth/signin", controller.signin);
 
-  // app.post("/api/auth/reset-password", controller.resetpassword);
+  app.post("/api/auth/reset-password", controller.resetpassword);
 
-  // app.post(
-  //   "/api/auth/new-password",
-  //   [authJwt.validPasswordToken],
-  //   controller.newPassword
-  // );
+  app.post(
+    "/api/auth/new-password",
+    [authJwt.validPasswordToken],
+    controller.newPassword
+  );
 };

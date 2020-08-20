@@ -11,25 +11,6 @@ const s3 = new AWS.S3({
   secretAccessKey: AWSSECRET,
 });
 
-// get all restaurants
-exports.getRestaurants = (req, res) => {
-  console.log(`Received request for all restaurants`);
-
-  Restaurant.find().exec(function (err, restaurants) {
-    if (err) {
-      console.log(`An error occurred while retrieving all restaurants: ${err}`);
-      res.status(500);
-      res.send({ err, status: "error" });
-    } else if (restaurants === null) {
-      res.status(404);
-      res.send({ status: "error", msg: "Resource Not Found" });
-    } else {
-      res.send(restaurants);
-      console.log(restaurants);
-    }
-  });
-};
-
 // get a pdf file of a menu given its name and restaurant id to which it belongs
 exports.getMenuFile = (req, res) => {
   const restaurantId = req.params.id; //use restaurant document id for uniqueness
@@ -117,6 +98,7 @@ exports.uploadMenuFile = (req, res) => {
       if (err) {
         res.send({ err, status: "error" });
       } else {
+        console.log(`Menu file ${filename} uploaded successfully`);
         res.send({
           //   data: s3res,
           status: "success",

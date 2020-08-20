@@ -67,4 +67,10 @@ module.exports = function (app) {
     [authJwt.verifyToken],
     controller.getUserHasContactTracing
   );
+
+  app.post(
+    "/api/content/features/update-user-plan",
+    [authJwt.verifyToken],
+    controller.updateUserPlan
+  );
 };

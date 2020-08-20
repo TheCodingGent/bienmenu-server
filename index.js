@@ -50,6 +50,7 @@ require("./routes/user.routes")(app);
 require("./routes/restaurant.routes")(app);
 require("./routes/file.routes")(app);
 require("./routes/customer.routes")(app);
+require("./routes/payment.routes")(app);
 
 server.listen(port, () => {
   console.log("Listening on port " + port);
