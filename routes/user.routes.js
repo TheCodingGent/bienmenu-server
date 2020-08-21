@@ -68,6 +68,12 @@ module.exports = function (app) {
     controller.getUserHasContactTracing
   );
 
+  app.get(
+    "/api/content/features/update-user-customerId",
+    [authJwt.verifyToken],
+    controller.updateUserCustomerId
+  );
+
   app.post(
     "/api/content/features/update-user-plan",
     [authJwt.verifyToken],

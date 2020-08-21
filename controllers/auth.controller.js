@@ -10,13 +10,12 @@ var bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const { google } = require("googleapis");
-const { Console } = require("console");
 const OAuth2 = google.auth.OAuth2;
 
 // stripe setup to update with production key
 const stripe = require("stripe")(process.env.STRIPE_API);
 
-exports.signup = (req, res) => {
+exports.signup = async (req, res) => {
   console.log("Received request to register user: " + req.body.username);
 
   const user = new User({
@@ -28,6 +27,13 @@ exports.signup = (req, res) => {
     password: bcrypt.hashSync(req.body.password, 8),
     restaurants: [],
   });
+
+  // create the stripe customer and add it to the user if they have any plan other than basic
+  var customerId = await getCustomerId(req.body.plan, req.body.email);
+
+  if (customerId) {
+    user.stripeCustomerId = customerId;
+  }
 
   user.save((err, user) => {
     if (err) {
@@ -93,7 +99,6 @@ exports.signup = (req, res) => {
 exports.signin = async (req, res) => {
   const username = req.body.username;
   var user;
-  var customer;
   var subscriptionId;
   var activeProducts = [];
 
@@ -134,36 +139,13 @@ exports.signin = async (req, res) => {
     expiresIn: 86400, // 24 hours
   });
 
-  // check if this is a stripe customer
-  try {
-    customer = await stripe.customers
-      .list({ email: user.email, limit: 1 })
-      .then((customers) => {
-        return customers.data[0];
-      });
-  } catch (err) {
-    console.log(
-      `An error occurred while retrieving customer for ${user.email} from stripe`
-    );
-    res.status(500).send({ err, status: "error" });
-    return;
-  }
-
-  //customer in stripe found and does not have more than one active subscription
-  if (customer) {
-    console.log(
-      `Number of customer subscriptions: ${customer.subscriptions.data.length}`
-    );
-
-    if (!user.stripeCustomerId) {
-      user.stripeCustomerId = customer.id;
-    }
-
+  // check if user has a stripe customer id in the db this should be created when they register or when they upgrade
+  if (user.stripeCustomerId) {
     try {
       // we assume that each customer can only have one active subscription at a time
       var subscription = await stripe.subscriptions
         .list({
-          customer: customer.id,
+          customer: user.stripeCustomerId,
           limit: 1,
           status: "active",
         })
@@ -453,4 +435,24 @@ updateUserBasedOnActiveProducts = (user, activeProducts) => {
   }
 
   return user;
+};
+
+getCustomerId = async (plan, email) => {
+  if (!plan || !email || plan === "basic") {
+    return;
+  }
+
+  try {
+    const customer = await stripe.customers.create({
+      description: email,
+      email: email,
+    });
+
+    return customer.id;
+  } catch (err) {
+    console.log(
+      `An error occurred while creating customer in stripe for ${email}`
+    );
+    return;
+  }
 };

@@ -241,8 +241,58 @@ exports.updateUserPlan = (req, res) => {
       console.log(`User ${user.username} plan updated successfully`);
       res.status(200).send({
         status: "success",
-        msg: "User rplan was updated successfully",
+        msg: "User plan was updated successfully",
       });
     });
+  });
+};
+
+exports.updateUserCustomerId = async (req, res) => {
+  User.findById(req.userId).exec(async (err, user) => {
+    if (err) {
+      res.status(500).send({ status: "error", err });
+      return;
+    }
+
+    //if user does not have a customer ID then create one
+    if (!user.stripeCustomerId) {
+      const stripe = require("stripe")(process.env.STRIPE_API);
+
+      try {
+        const customer = await stripe.customers
+          .list({ email: user.email, limit: 1 })
+          .then((customers) => {
+            return customers.data[0];
+          });
+
+        user.stripeCustomerId = customer.id;
+      } catch (err) {
+        console.log(
+          `An error occurred while retrieving customer for ${user.email} from stripe`
+        );
+        res.status(500).send({ err, status: "error" });
+        return;
+      }
+
+      user.save((err) => {
+        if (err) {
+          console.log(
+            `Failed to update user customer id for user ${user.username} with error: ${err}`
+          );
+          res.status(500).send({ status: "error", err });
+        }
+        console.log(`User ${user.username} customer id updated successfully`);
+        res.status(200).send({
+          status: "success",
+          msg: "User customerId was updated successfully",
+        });
+      });
+    } else {
+      // already has a customerId
+      res.status(200).send({
+        status: "success",
+        msg: "User customerId already up to date",
+      });
+    }
   });
 };
