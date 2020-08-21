@@ -11,6 +11,9 @@ exports.getPaymentSession = async (req, res) => {
     const session = await stripe.checkout.sessions.create({
       customer_email: customerEmail,
       payment_method_types: ["card"],
+      subscription_data: {
+        trial_from_plan: true,
+      },
       line_items: [
         {
           price: priceId,
