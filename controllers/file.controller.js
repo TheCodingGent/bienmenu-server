@@ -96,6 +96,7 @@ exports.uploadMenuFile = (req, res) => {
     // we are sending buffer data to s3.
     s3.upload(params, (err, s3res) => {
       if (err) {
+        console.log(`An error occurred while uploading file to S3: ${err}`);
         res.send({ err, status: "error" });
       } else {
         console.log(`Menu file uploaded successfully`);
