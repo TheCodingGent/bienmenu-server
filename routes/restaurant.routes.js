@@ -64,6 +64,12 @@ module.exports = function (app) {
     controller.updateContactTracing
   );
 
+  app.post(
+    "/restaurants/updated-menu-hosting/:id",
+    [authJwt.verifyToken],
+    controller.updateMenuHosting
+  );
+
   // DELETE
 
   app.post(

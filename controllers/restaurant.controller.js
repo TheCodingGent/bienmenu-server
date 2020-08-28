@@ -397,3 +397,34 @@ exports.updateContactTracing = (req, res) => {
     });
   });
 };
+
+exports.updateMenuHosting = (req, res) => {
+  const restaurantId = req.params.id;
+
+  Restaurant.findById(restaurantId).exec((err, restaurant) => {
+    if (err) {
+      res.status(500).send({ status: "error", err });
+      return;
+    }
+
+    restaurant.hostedInternal = req.body.hostedInternal;
+
+    restaurant.save(function (err, restaurant) {
+      if (err) {
+        console.log(
+          `An error occurred while updating contact tracing for restaurant ${restaurant.name}: ${err}`
+        );
+        res.status(500);
+        res.send({ status: "error", err });
+      } else {
+        res.send({
+          status: "success",
+          msg: "Restaurant updated successfully!",
+        });
+        console.log(
+          `Updated restaurant ${restaurantId} successfully for with value of hosted internal ${req.body.hostedInternal}`
+        );
+      }
+    });
+  });
+};
