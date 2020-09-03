@@ -401,7 +401,8 @@ updateUserBasedOnActiveProducts = (user, activeProducts) => {
     user.maxRestaurantCount = 1;
     user.maxMenuUpdateCount = 1;
     user.maxMenusPerRestaurant = 4;
-    user.hasContactTracing = false;
+    // user.hasContactTracing = false;
+    user.hasContactTracing = true;
     user.plan = "basic";
 
     // update user expiry if current time is past their expiry token reset their menu update count for another month
