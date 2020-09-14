@@ -4,6 +4,8 @@ const db = require("./models");
 
 const app = express();
 
+require("dotenv").config();
+
 // set the port
 let port = process.env.PORT;
 if (port == null || port == "") {
