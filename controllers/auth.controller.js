@@ -10,6 +10,8 @@ var bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 const { google } = require("googleapis");
+const { ObjectId } = require("mongodb");
+const FoodItemBank = require("../models/FoodItemBank");
 const OAuth2 = google.auth.OAuth2;
 
 // stripe setup to update with production key
@@ -27,6 +29,19 @@ exports.signup = async (req, res) => {
     password: bcrypt.hashSync(req.body.password, 8),
     restaurants: [],
   });
+
+  // create the food item bank for the user and link it to the user
+  var foodItemBank = new FoodItemBank({ _id: new ObjectId(), foodItems: [] });
+  try {
+    await foodItemBank.save();
+    user.foodItemBank = foodItemBank._id;
+  } catch (err) {
+    console.log(
+      `An error occurred while creating food item bank for user ${user.username}`
+    );
+    res.status(500).send({ err, status: "error" });
+    return;
+  }
 
   // create the stripe customer and add it to the user if they have any plan other than basic
   var customerId = await getCustomerId(req.body.plan, req.body.email);
@@ -135,7 +150,7 @@ exports.signin = async (req, res) => {
     });
   }
 
-  var token = jwt.sign({ id: user.id }, config.secret, {
+  var token = jwt.sign({ id: user._id }, config.secret, {
     expiresIn: 86400, // 24 hours
   });
 
