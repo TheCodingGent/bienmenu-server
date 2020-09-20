@@ -22,14 +22,20 @@ module.exports = function (app) {
   // ADD
 
   app.post(
-    "/food-items/add",
+    "/food-items/food-item/add",
     [authJwt.verifyToken, authJwt.isAdmin],
     controller.addFoodItem
   );
 
   app.post(
-    "/food-items/add/user",
+    "/food-items/food-item/add/user",
     [authJwt.verifyToken],
     controller.addFoodItemForUser
+  );
+
+  app.post(
+    "/food-items/food-item/delete",
+    [authJwt.verifyToken],
+    controller.deleteFoodItem
   );
 };

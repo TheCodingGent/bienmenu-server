@@ -12,6 +12,10 @@ module.exports = function (app) {
   // GET
   app.get("/menu/pdf/:id/:filename", controller.getMenuFile);
 
+  app.get("/food-item/image/:id/:filename", controller.getImageFile);
+
   // ADD
   app.post("/menu/pdf/upload/:id", controller.uploadMenuFile);
+
+  app.post("/food-item/image/upload/:id", controller.uploadImageFile);
 };

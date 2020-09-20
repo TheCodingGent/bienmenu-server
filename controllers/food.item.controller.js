@@ -115,6 +115,13 @@ exports.addFoodItemForUser = async (req, res) => {
       upsert: true, // Make this update into an upsert
     });
 
+    // if item already exists in bank remove it
+    await FoodItemBank.findByIdAndUpdate(
+      { _id: user.foodItemBank._id },
+      { $pull: { foodItems: foodItem._id } },
+      { new: true }
+    );
+
     // if food item was added successfully add the food item to the users food item bank
     await FoodItemBank.findOneAndUpdate(
       { _id: user.foodItemBank._id },
@@ -133,6 +140,44 @@ exports.addFoodItemForUser = async (req, res) => {
   } catch (err) {
     console.log(
       `An error occurred while updating food item ${foodItem.name} into the database`
+    );
+    res.status(500).send({ err, status: "error" });
+    return;
+  }
+};
+
+exports.deleteFoodItem = async (req, res) => {
+  var userId = req.userId;
+  var foodItemId = req.body.foodItemId;
+  var user;
+
+  try {
+    // delete food item to the food item collection
+    await FoodItem.findByIdAndDelete(foodItemId);
+
+    // get the user from the database
+    user = await User.findById(userId).exec();
+
+    if (!user) {
+      return res.status(404).send({ status: "error", msg: "User not found" });
+    }
+
+    // delete food item from foodbank for current user potentially delete in all food banks in the future
+    await FoodItemBank.findByIdAndUpdate(
+      { _id: user.foodItemBank._id },
+      { $pull: { foodItems: foodItemId } },
+      { new: true }
+    );
+
+    console.log(`Deleted food item ${foodItemId} successfully.`);
+
+    res.send({
+      status: "success",
+      msg: "Food item deleted successfully!",
+    });
+  } catch (err) {
+    console.log(
+      `An error occurred while deleting food item ${foodItem.name} into the database`
     );
     res.status(500).send({ err, status: "error" });
     return;
