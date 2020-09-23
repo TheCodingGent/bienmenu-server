@@ -124,6 +124,7 @@ exports.uploadMenuFile = (req, res) => {
       Body: Buffer.concat(chunks), // concatinating all chunks
       ContentEncoding: fEncoding, // optional
       ContentType: ftype, // required
+      ACL: "public-read",
     };
 
     // we are sending buffer data to s3.
@@ -186,6 +187,7 @@ exports.uploadImageFile = (req, res) => {
       Body: Buffer.concat(chunks), // concatinating all chunks
       ContentEncoding: fEncoding, // optional
       ContentType: ftype, // required
+      ACL: "public-read",
     };
 
     // we are sending buffer data to s3.

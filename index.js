@@ -12,6 +12,19 @@ if (port == null || port == "") {
   port = 3000;
 }
 
+// to remove
+// var whitelist = [process.env.CORS_OPTION, "http://192.168.1.66:4200"];
+// var corsOptions = {
+//   origin: function (origin, callback) {
+//     if (whitelist.indexOf(origin) !== -1) {
+//       callback(null, true);
+//     } else {
+//       callback(new Error("Not allowed by CORS"));
+//     }
+//   },
+// };
+//
+
 var corsOptions = {
   origin: process.env.CORS_OPTION,
 };
