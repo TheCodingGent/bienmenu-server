@@ -32,9 +32,15 @@ var corsOptions = {
 app.use(cors(corsOptions));
 
 // parse requests of content-type - application/json
-app.use(express.json({ limit: "50mb", extended: true }));
+app.use(express.json({
+  limit: "50mb",
+  extended: true
+}));
 
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use(express.urlencoded({
+  limit: "50mb",
+  extended: true
+}));
 
 const server = require("http").createServer(app);
 
@@ -67,6 +73,7 @@ require("./routes/file.routes")(app);
 require("./routes/customer.routes")(app);
 require("./routes/payment.routes")(app);
 require("./routes/food.item.routes")(app);
+require("./routes/menu.routes")(app);
 
 server.listen(port, () => {
   console.log("Listening on port " + port);
