@@ -6,7 +6,7 @@ const Schema = mongoose.Schema;
 
 const MenuBankSchema = new Schema({
     _id: ObjectId,
-    foodItems: [{
+    biemenuMenus: [{
         type: Schema.Types.ObjectId,
         ref: "Menu",
     }, ],

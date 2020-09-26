@@ -1,7 +1,7 @@
 const db = require("../models");
 const Restaurant = require("../models/Restaurant");
 const Menu = db.menu;
-const MenuBank = db.MenuBank;
+const MenuBank = db.menuBank;
 
 
 
@@ -36,7 +36,7 @@ exports.getMenuById = (req, res) => {
 // get menus for restaurant
 exports.getMenusForRestaurant = async (req, res) => {
 
-    const restaurantId = req.params.id;
+    const restaurantId = req.params.restaurantId;
     var restaurant;
     var menuBank;
 
@@ -70,7 +70,7 @@ exports.getMenusForRestaurant = async (req, res) => {
         console.log(`menus successfully retrieved for restaurant ${restaurantId}`);
         res.status(200).send({
             status: "success",
-            menus: menuBank.menus,
+            menus: menuBank.biemenuMenus,
         });
     } catch (err) {
         console.log(`An error occurred while retrieving menus for ${restaurantId}`);
@@ -107,7 +107,7 @@ exports.addMenu = (req, res) => {
 
 // add a new menu for a restaurant
 exports.addMenuForRestaurant = async (req, res) => {
-    var restaurantId = req.body.restaurantId;
+    var restaurantId = req.params.restaurantId;
     var menu = new Menu(req.body);
     var restaurant;
 
@@ -116,7 +116,6 @@ exports.addMenuForRestaurant = async (req, res) => {
     try {
         // get the restaurant from the database
         restaurant = await Restaurant.findById(restaurantId).exec();
-
         if (!restaurant) {
             return res.status(404).send({
                 status: "error",
@@ -135,7 +134,7 @@ exports.addMenuForRestaurant = async (req, res) => {
             _id: restaurant.menuBank._id
         }, {
             $pull: {
-                menus: menu._id
+                biemenuMenus: menu._id
             }
         }, {
             new: true
@@ -143,10 +142,10 @@ exports.addMenuForRestaurant = async (req, res) => {
 
         // if menu was added successfully add the menu to the restaurant menu bank
         await MenuBank.findOneAndUpdate({
-            _id: restaurant.MenuBank._id
+            _id: restaurant.menuBank._id
         }, {
             $push: {
-                menus: menu._id
+                biemenuMenus: menu._id
             }
         }, {
             new: true
@@ -174,7 +173,7 @@ exports.addMenuForRestaurant = async (req, res) => {
 
 exports.deleteMenu = async (req, res) => {
     var menuId = req.body.menuId;
-    var restaurantId = req.body.restaurantId;
+    var restaurantId = req.params.restaurantId;
     var restaurant;
 
     try {
@@ -196,7 +195,7 @@ exports.deleteMenu = async (req, res) => {
             _id: restaurant.menuBank._id
         }, {
             $pull: {
-                menus: menuId
+                biemenuMenus: menuId
             }
         }, {
             new: true

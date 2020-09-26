@@ -16,7 +16,7 @@ module.exports = function (app) {
     app.get("/menus/menu/:id", [authJwt.verifyToken], controller.getMenuById);
 
     app.get(
-        "/menus/restaurnt",
+        "/menus/restaurnt/:restaurantId",
         [authJwt.verifyToken],
         controller.getMenusForRestaurant
     );
@@ -30,13 +30,13 @@ module.exports = function (app) {
     );
 
     app.post(
-        "/menus/menu/add/restaurant",
+        "/menus/menu/add/restaurant/:restaurantId",
         [authJwt.verifyToken],
         controller.addMenuForRestaurant
     );
 
     app.post(
-        "/menus/menu/delete",
+        "/menus/menu/delete/:restaurantId",
         [authJwt.verifyToken],
         controller.deleteMenu
     );

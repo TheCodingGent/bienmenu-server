@@ -1,11 +1,16 @@
 const mongoose = require("mongoose");
-const { ObjectId } = require("mongodb");
+const {
+  ObjectId
+} = require("mongodb");
 const Schema = mongoose.Schema;
 
 const menuSchema = new Schema({
   name: String,
   filename: String,
-  lastupdated: { type: String, default: new Date().toISOString() },
+  lastupdated: {
+    type: String,
+    default: new Date().toISOString()
+  },
 });
 
 const restaurantSchema = new Schema({
@@ -20,11 +25,30 @@ const restaurantSchema = new Schema({
   menus: {
     type: [menuSchema],
   },
-  rating: { type: Number, default: 4.5 },
-  color: { type: String, default: "#009688" },
-  tracingEnabled: { type: Boolean, default: false },
-  externalMenuLink: { type: String, default: "" },
-  hostedInternal: { type: Boolean, default: true },
+  menuBank: {
+    type: Schema.Types.ObjectId,
+    ref: "MenuBank",
+  },
+  rating: {
+    type: Number,
+    default: 4.5
+  },
+  color: {
+    type: String,
+    default: "#009688"
+  },
+  tracingEnabled: {
+    type: Boolean,
+    default: false
+  },
+  externalMenuLink: {
+    type: String,
+    default: ""
+  },
+  hostedInternal: {
+    type: Boolean,
+    default: true
+  },
 });
 
 module.exports = mongoose.model("Restaurant", restaurantSchema);
