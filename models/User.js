@@ -27,6 +27,10 @@ const userSchema = new Schema({
     },
   },
   activeProducts: [String],
+  foodItemBank: {
+    type: Schema.Types.ObjectId,
+    ref: "FoodItemBank",
+  },
   roles: [
     {
       type: Schema.Types.ObjectId,

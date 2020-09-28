@@ -11,6 +11,9 @@ db.restaurant = require("./Restaurant");
 db.menu = require("./Menu");
 db.resetToken = require("./PasswordResetToken");
 db.customer = require("./Customer");
+db.foodItem = require("./FoodItem");
+db.foodItemBank = require("./FoodItemBank");
+db.menuBank = require("./MenuBank");
 
 db.ROLES = ["user", "admin", "moderator"];
 

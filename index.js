@@ -12,6 +12,19 @@ if (port == null || port == "") {
   port = 3000;
 }
 
+// to remove
+// var whitelist = [process.env.CORS_OPTION, "http://192.168.1.76:4200"];
+// var corsOptions = {
+//   origin: function (origin, callback) {
+//     if (whitelist.indexOf(origin) !== -1) {
+//       callback(null, true);
+//     } else {
+//       callback(new Error("Not allowed by CORS"));
+//     }
+//   },
+// };
+//
+
 var corsOptions = {
   origin: process.env.CORS_OPTION,
 };
@@ -19,9 +32,19 @@ var corsOptions = {
 app.use(cors(corsOptions));
 
 // parse requests of content-type - application/json
-app.use(express.json({ limit: "50mb", extended: true }));
+app.use(
+  express.json({
+    limit: "50mb",
+    extended: true,
+  })
+);
 
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+app.use(
+  express.urlencoded({
+    limit: "50mb",
+    extended: true,
+  })
+);
 
 const server = require("http").createServer(app);
 
@@ -53,6 +76,8 @@ require("./routes/restaurant.routes")(app);
 require("./routes/file.routes")(app);
 require("./routes/customer.routes")(app);
 require("./routes/payment.routes")(app);
+require("./routes/food.item.routes")(app);
+require("./routes/menu.routes")(app);
 
 server.listen(port, () => {
   console.log("Listening on port " + port);
