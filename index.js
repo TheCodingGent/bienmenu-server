@@ -13,7 +13,7 @@ if (port == null || port == "") {
 }
 
 // to remove
-// var whitelist = [process.env.CORS_OPTION, "http://192.168.1.66:4200"];
+// var whitelist = [process.env.CORS_OPTION, "http://192.168.1.76:4200"];
 // var corsOptions = {
 //   origin: function (origin, callback) {
 //     if (whitelist.indexOf(origin) !== -1) {
@@ -32,15 +32,19 @@ var corsOptions = {
 app.use(cors(corsOptions));
 
 // parse requests of content-type - application/json
-app.use(express.json({
-  limit: "50mb",
-  extended: true
-}));
+app.use(
+  express.json({
+    limit: "50mb",
+    extended: true,
+  })
+);
 
-app.use(express.urlencoded({
-  limit: "50mb",
-  extended: true
-}));
+app.use(
+  express.urlencoded({
+    limit: "50mb",
+    extended: true,
+  })
+);
 
 const server = require("http").createServer(app);
 

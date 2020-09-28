@@ -418,7 +418,7 @@ updateUserBasedOnActiveProducts = (user, activeProducts) => {
     user.maxMenusPerRestaurant = 4;
     // user.hasContactTracing = false;
     user.hasContactTracing = true;
-    user.plan = "basic";
+    //user.plan = "basic";
 
     // update user expiry if current time is past their expiry token reset their menu update count for another month
     const currentTime = moment(moment().format());
@@ -445,7 +445,7 @@ updateUserBasedOnActiveProducts = (user, activeProducts) => {
     user.maxMenuUpdateCount = -1;
     user.maxMenusPerRestaurant = 8;
     user.hasContactTracing = true;
-    user.plan = "plus";
+    //user.plan = "plus";
 
     return user;
   }
@@ -454,7 +454,7 @@ updateUserBasedOnActiveProducts = (user, activeProducts) => {
 };
 
 getCustomerId = async (plan, email) => {
-  if (!plan || !email || plan === "basic") {
+  if (!plan || !email || plan === "basic" || plan === "contact-tracing") {
     return;
   }
 

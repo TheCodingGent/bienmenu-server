@@ -1,7 +1,5 @@
 const mongoose = require("mongoose");
-const {
-  ObjectId
-} = require("mongodb");
+const { ObjectId } = require("mongodb");
 const Schema = mongoose.Schema;
 
 const menuSchema = new Schema({
@@ -9,7 +7,7 @@ const menuSchema = new Schema({
   filename: String,
   lastupdated: {
     type: String,
-    default: new Date().toISOString()
+    default: new Date().toISOString(),
   },
 });
 
@@ -22,6 +20,8 @@ const restaurantSchema = new Schema({
   city: String,
   address: String,
   phone: String,
+  coverPhotoUrl: String,
+
   menus: {
     type: [menuSchema],
   },
@@ -31,23 +31,23 @@ const restaurantSchema = new Schema({
   },
   rating: {
     type: Number,
-    default: 4.5
+    default: 4.5,
   },
   color: {
     type: String,
-    default: "#009688"
+    default: "#009688",
   },
   tracingEnabled: {
     type: Boolean,
-    default: false
+    default: false,
   },
   externalMenuLink: {
     type: String,
-    default: ""
+    default: "",
   },
   hostedInternal: {
     type: Boolean,
-    default: true
+    default: true,
   },
 });
 

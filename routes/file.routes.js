@@ -17,5 +17,5 @@ module.exports = function (app) {
   // ADD
   app.post("/menu/pdf/upload/:id", controller.uploadMenuFile);
 
-  app.post("/food-item/image/upload/:id", controller.uploadImageFile);
+  app.post("/image/upload/:path/:id", controller.uploadImageFile);
 };

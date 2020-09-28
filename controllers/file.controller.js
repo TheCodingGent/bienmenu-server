@@ -147,7 +147,12 @@ exports.uploadMenuFile = (req, res) => {
 };
 
 exports.uploadImageFile = (req, res) => {
-  const foodItemId = req.params.id;
+  const path = req.params.path;
+  const id = req.params.id;
+
+  const key = `${path}/${id}`;
+
+  console.log(key);
 
   let chunks = [],
     fname,
@@ -183,7 +188,7 @@ exports.uploadImageFile = (req, res) => {
   busboy.on("finish", function () {
     const params = {
       Bucket: BUCKET_NAME,
-      Key: `foodItems/${foodItemId}/${fname}`,
+      Key: `${key}/${fname}`,
       Body: Buffer.concat(chunks), // concatinating all chunks
       ContentEncoding: fEncoding, // optional
       ContentType: ftype, // required

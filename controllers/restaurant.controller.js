@@ -1,8 +1,6 @@
 const db = require("../models");
 const MenuBank = require("../models/MenuBank");
-const {
-  ObjectId
-} = require("mongodb");
+const { ObjectId } = require("mongodb");
 const User = db.user;
 const Restaurant = db.restaurant;
 
@@ -28,13 +26,13 @@ exports.getRestaurants = (req, res) => {
       res.status(500);
       res.send({
         status: "error",
-        err
+        err,
       });
     } else if (restaurants === null) {
       res.status(404);
       res.send({
         status: "error",
-        msg: "No restaurants found"
+        msg: "No restaurants found",
       });
     } else {
       res.send(restaurants);
@@ -53,13 +51,13 @@ exports.getRestaurantById = (req, res) => {
     res.status(500);
     res.send({
       status: "error",
-      msg: "Recieved invalid Id..."
+      msg: "Recieved invalid Id...",
     });
     return;
   }
 
   Restaurant.findOne({
-    _id: restaurantId
+    _id: restaurantId,
   }).exec(function (err, restaurant) {
     if (err) {
       console.log(
@@ -68,7 +66,7 @@ exports.getRestaurantById = (req, res) => {
       res.status(500);
       res.send({
         status: "error",
-        err
+        err,
       });
     } else if (restaurant === null) {
       res.status(404);
@@ -99,12 +97,12 @@ exports.addRestaurant = (req, res) => {
       res.status(500);
       res.send({
         status: "error",
-        err
+        err,
       });
     } else {
       res.send({
         status: "success",
-        msg: "Restaurant added successfully!"
+        msg: "Restaurant added successfully!",
       });
       console.log(
         `${restaurant.name} has been saved successfully to the restaurants collection.`
@@ -125,7 +123,7 @@ exports.addRestaurantForUser = async (req, res) => {
   // create the BiemenuMenu bank for the restaurant and link it to the restaurant
   var menuBank = new MenuBank({
     _id: new ObjectId(),
-    biemenuMenus: []
+    biemenuMenus: [],
   });
   try {
     await menuBank.save();
@@ -136,7 +134,7 @@ exports.addRestaurantForUser = async (req, res) => {
     );
     res.status(500).send({
       err,
-      status: "error"
+      status: "error",
     });
     return;
   }
@@ -150,7 +148,7 @@ exports.addRestaurantForUser = async (req, res) => {
       res.status(500);
       res.send({
         status: "error",
-        err
+        err,
       });
     } else {
       console.log(
@@ -158,15 +156,19 @@ exports.addRestaurantForUser = async (req, res) => {
       );
 
       // if restaurant was added successfully add the restaurant Id to the users restaurants
-      User.findOneAndUpdate({
-        _id: userId
-      }, {
-        $push: {
-          restaurants: restaurant._id
+      User.findOneAndUpdate(
+        {
+          _id: userId,
+        },
+        {
+          $push: {
+            restaurants: restaurant._id,
+          },
+        },
+        {
+          new: true,
         }
-      }, {
-        new: true
-      }).exec(function (err, user) {
+      ).exec(function (err, user) {
         if (err) {
           console.log(
             `An error occurred while adding restaurant ${restaurant.name} for user ${userId}: ${err}`
@@ -174,13 +176,13 @@ exports.addRestaurantForUser = async (req, res) => {
           res.status(500);
           res.send({
             status: "error",
-            err
+            err,
           });
         } else if (user === null) {
           res.status(404);
           res.send({
             status: "error",
-            msg: `User ${userId} not found`
+            msg: `User ${userId} not found`,
           });
         } else {
           res.send({
@@ -199,10 +201,9 @@ exports.addRestaurantForUser = async (req, res) => {
 // get all menus for a given restaurant
 exports.getAllMenusForRestaurant = (req, res) => {
   const restaurantId = req.params.id;
-  console.log(`Received request for all menus for restaurant ${restaurantId}`);
 
   Restaurant.findOne({
-    _id: restaurantId
+    _id: restaurantId,
   }).exec(function (err, restaurant) {
     if (err) {
       console.log(
@@ -211,7 +212,7 @@ exports.getAllMenusForRestaurant = (req, res) => {
       res.status(500);
       res.send({
         status: "error",
-        err
+        err,
       });
     } else if (restaurant === null) {
       res.status(404);
@@ -221,9 +222,6 @@ exports.getAllMenusForRestaurant = (req, res) => {
       });
     } else {
       res.send(restaurant.menus);
-      console.log(
-        `Retrieved ${restaurant.menus.lengthmenus} for restaurant ${restaurantId} successfully.`
-      );
     }
   });
 };
@@ -238,15 +236,19 @@ exports.addMenuToRestaurant = (req, res) => {
   );
 
   // find restaurant and update the menu
-  Restaurant.findOneAndUpdate({
-    _id: restaurantId
-  }, {
-    $push: {
-      menus: menu
+  Restaurant.findOneAndUpdate(
+    {
+      _id: restaurantId,
+    },
+    {
+      $push: {
+        menus: menu,
+      },
+    },
+    {
+      new: true,
     }
-  }, {
-    new: true
-  }).exec(function (err, restaurant) {
+  ).exec(function (err, restaurant) {
     if (err) {
       console.log(
         `An error occurred while adding menu ${menu.name} to restaurant ${restaurantId}: ${err}`
@@ -254,16 +256,13 @@ exports.addMenuToRestaurant = (req, res) => {
       res.status(500);
       res.send({
         status: "error",
-        err
+        err,
       });
     } else {
       res.send({
         status: "success",
-        msg: "Menu added successfully!"
+        msg: "Menu added successfully!",
       });
-      console.log(
-        `Menu ${menu.name} has been added successfully to restaurant ${restaurant.name}`
-      );
     }
   });
 };
@@ -273,24 +272,23 @@ exports.updateMenuTimestamp = (req, res) => {
   const menu = req.body;
   const restaurantId = req.params.id;
 
-  console.log(
-    `Received request to update menu ${menu.name} for restaurant ${restaurantId}`
-  );
-
-  Restaurant.findOneAndUpdate({
-    _id: restaurantId,
-    "menus._id": menu._id
-  }, {
-    $set: {
-      "menus.$.lastupdated": new Date().toISOString()
+  Restaurant.findOneAndUpdate(
+    {
+      _id: restaurantId,
+      "menus._id": menu._id,
+    },
+    {
+      $set: {
+        "menus.$.lastupdated": new Date().toISOString(),
+      },
     }
-  }).exec(function (err, restaurant) {
+  ).exec(function (err, restaurant) {
     if (err) {
       console.log(`An error occurred while updating menu ${menu.name}: ${err}`);
       res.status(500);
       res.send({
         status: "error",
-        err
+        err,
       });
     } else if (restaurant === null) {
       res.status(404);
@@ -301,9 +299,8 @@ exports.updateMenuTimestamp = (req, res) => {
     } else {
       res.send({
         status: "success",
-        msg: "Menu updated successfully!"
+        msg: "Menu updated successfully!",
       });
-      console.log(`Menu ${menu.name} timestamp updated successfully!`);
     }
   });
 };
@@ -313,38 +310,38 @@ exports.deleteMenuForRestaurant = (req, res) => {
   const menu = req.body;
   const restaurantId = req.params.id;
 
-  console.log(
-    `Received request to delete menu ${menu.name} for restaurant ${restaurantId}`
-  );
-
-  Restaurant.update({}, {
-    $pull: {
-      menus: {
-        _id: menu._id
-      }
+  Restaurant.update(
+    {},
+    {
+      $pull: {
+        menus: {
+          _id: menu._id,
+        },
+      },
+    },
+    {
+      multi: true,
     }
-  }, {
-    multi: true
-  }).exec(function (err, restaurant) {
+  ).exec(function (err, restaurant) {
     if (err) {
       console.log(`An error occurred while deleting menu ${menu.name}: ${err}`);
       res.status(500);
       res.send({
         status: "error",
-        err
+        err,
       });
     } else if (restaurant === null) {
       res.status(404);
       res.send({
         status: "error",
-        msg: "Menu not found"
+        msg: "Menu not found",
       });
     } else {
       // upon successful deletion from the database delete file from cloud storage
       var fileKey = `menus/${restaurantId}/${menu.filename}.pdf`;
       var params = {
         Bucket: BUCKET_NAME,
-        Key: fileKey
+        Key: fileKey,
       };
 
       // delete file from AWS
@@ -354,16 +351,15 @@ exports.deleteMenuForRestaurant = (req, res) => {
             `An error occurred while trying to delete the menu ${menu.name} file: ${err}`
           );
           res.status(500).send({
-            error: err
+            error: err,
           });
         }
         // menu file successfully deleted from AWS and from database
         else {
           res.send({
             status: "success",
-            msg: "Menu deleted successfully!"
+            msg: "Menu deleted successfully!",
           });
-          console.log(`Deleted menu ${menu.name} successfully`);
         }
       });
     }
@@ -379,25 +375,28 @@ exports.deleteRestaurantForUser = (req, res) => {
     `Received request to delete restaurant ${restaurantId} for user ${userId}`
   );
 
-  User.findOneAndUpdate({
-    _id: userId
-  }, {
-    $pull: {
-      restaurants: restaurantId
+  User.findOneAndUpdate(
+    {
+      _id: userId,
+    },
+    {
+      $pull: {
+        restaurants: restaurantId,
+      },
     }
-  }).exec(function (err, user) {
+  ).exec(function (err, user) {
     if (err) {
       console.log(`An error occurred while deleting menu ${menu.name}: ${err}`);
       res.status(500);
       res.send({
         status: "error",
-        err
+        err,
       });
     } else if (user === null) {
       res.status(404);
       res.send({
         status: "error",
-        msg: "User not found"
+        msg: "User not found",
       });
     } else {
       user.currentRestaurantCount -= 1;
@@ -409,7 +408,7 @@ exports.deleteRestaurantForUser = (req, res) => {
           res.status(500);
           res.send({
             status: "error",
-            err
+            err,
           });
         } else {
           res.send({
@@ -430,7 +429,7 @@ exports.getMenuMaxCountReached = (req, res) => {
     if (err) {
       res.status(500).send({
         status: "error",
-        err
+        err,
       });
       return;
     }
@@ -442,7 +441,7 @@ exports.getMenuMaxCountReached = (req, res) => {
       if (err) {
         res.status(500).send({
           status: "error",
-          err
+          err,
         });
         return;
       }
@@ -474,7 +473,7 @@ exports.getContactTracingEnabled = (req, res) => {
     if (err) {
       res.status(500).send({
         status: "error",
-        err
+        err,
       });
       return;
     }
@@ -494,7 +493,7 @@ exports.updateContactTracing = (req, res) => {
     if (err) {
       res.status(500).send({
         status: "error",
-        err
+        err,
       });
       return;
     }
@@ -509,16 +508,13 @@ exports.updateContactTracing = (req, res) => {
         res.status(500);
         res.send({
           status: "error",
-          err
+          err,
         });
       } else {
         res.send({
           status: "success",
           msg: "Restaurant updated successfully!",
         });
-        console.log(
-          `Updated restaurant ${restaurantId} successfully for with value of contact tracing ${req.body.tracingEnabled}`
-        );
       }
     });
   });
@@ -531,7 +527,7 @@ exports.updateMenuHosting = (req, res) => {
     if (err) {
       res.status(500).send({
         status: "error",
-        err
+        err,
       });
       return;
     }
@@ -546,16 +542,47 @@ exports.updateMenuHosting = (req, res) => {
         res.status(500);
         res.send({
           status: "error",
-          err
+          err,
         });
       } else {
         res.send({
           status: "success",
           msg: "Restaurant updated successfully!",
         });
+      }
+    });
+  });
+};
+
+exports.updateCoverPhoto = (req, res) => {
+  const restaurantId = req.params.id;
+
+  Restaurant.findById(restaurantId).exec((err, restaurant) => {
+    if (err) {
+      res.status(500).send({
+        status: "error",
+        err,
+      });
+      return;
+    }
+
+    restaurant.coverPhotoUrl = req.body.coverPhotoUrl;
+
+    restaurant.save(function (err, restaurant) {
+      if (err) {
         console.log(
-          `Updated restaurant ${restaurantId} successfully for with value of hosted internal ${req.body.hostedInternal}`
+          `An error occurred while updating cover photo url for restaurant ${restaurant.name}: ${err}`
         );
+        res.status(500);
+        res.send({
+          status: "error",
+          err,
+        });
+      } else {
+        res.send({
+          status: "success",
+          msg: "Restaurant updated successfully!",
+        });
       }
     });
   });

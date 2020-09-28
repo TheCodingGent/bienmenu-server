@@ -65,6 +65,12 @@ module.exports = function (app) {
   );
 
   app.post(
+    "/restaurants/update-cover-photo/:id",
+    [authJwt.verifyToken],
+    controller.updateCoverPhoto
+  );
+
+  app.post(
     "/restaurants/updated-menu-hosting/:id",
     [authJwt.verifyToken],
     controller.updateMenuHosting
