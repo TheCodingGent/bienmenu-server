@@ -11,7 +11,7 @@ exports.getMenuById = (req, res) => {
 
     Menu.findOne({
         _id: menuId
-    }).exec(function (err, menu) {
+    }).populate("sections.menuSectionItems.foodItem").exec(function (err, menu) {
         if (err) {
             console.log(
                 `An error occurred while retrieving menu ${menuId}: ${err}`
@@ -53,8 +53,16 @@ exports.getMenusForRestaurant = async (req, res) => {
         }
 
         // populate the restaurant menu bank
-        menuBank = await MenuBank.findById(restaurant.menuBank._id)
-            .populate("menus")
+        menuBank = await MenuBank.findById(restaurant.menuBank._id).populate("biemenuMenus")
+            // .populate({
+            //     path: 'biemenuMenus',
+            //     model: Menu,
+            //     populate: {
+            //         path: 'sections.menuSectionItems.foodItem',
+            //         model: FoodItem
+            //     }
+            // })
+
             .exec();
 
         // if menu bank not found return 404

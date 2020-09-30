@@ -7,7 +7,10 @@ const Schema = mongoose.Schema;
 const menuSectionItemSchema = new Schema({
   _id: ObjectId,
   order: Number,
-  foodItemId: String,
+  foodItem: {
+    type: Schema.Types.ObjectId,
+    ref: "FoodItem",
+  },
   menuSectionId: String,
   isActive: Boolean,
 
