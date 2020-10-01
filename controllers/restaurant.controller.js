@@ -1,10 +1,13 @@
 const db = require("../models");
 const MenuBank = require("../models/MenuBank");
-const { ObjectId } = require("mongodb");
+const {
+  ObjectId
+} = require("mongodb");
 const User = db.user;
 const Restaurant = db.restaurant;
 
 const AWS = require("aws-sdk");
+const Menu = require("../models/Menu");
 
 const AWSID = process.env.AWS_ACCESS_KEY_ID;
 const AWSSECRET = process.env.AWS_SECRET_KEY;
@@ -57,28 +60,38 @@ exports.getRestaurantById = (req, res) => {
   }
 
   Restaurant.findOne({
-    _id: restaurantId,
-  }).exec(function (err, restaurant) {
-    if (err) {
-      console.log(
-        `An error occurred while retrieving restaurant ${restaurantId}: ${err}`
-      );
-      res.status(500);
-      res.send({
-        status: "error",
-        err,
-      });
-    } else if (restaurant === null) {
-      res.status(404);
-      res.send({
-        status: "error",
-        msg: `Restaurant ${restaurantId} not found`,
-      });
-    } else {
-      res.send(restaurant);
-      console.log(`Retrieved restaurant: ${restaurant.name} successfully.`);
-    }
-  });
+      _id: restaurantId,
+    }).populate({
+      path: 'menuBank',
+      model: MenuBank,
+      populate: {
+        path: 'menus',
+        model: Menu
+      }
+    })
+
+
+    .exec(function (err, restaurant) {
+      if (err) {
+        console.log(
+          `An error occurred while retrieving restaurant ${restaurantId}: ${err}`
+        );
+        res.status(500);
+        res.send({
+          status: "error",
+          err,
+        });
+      } else if (restaurant === null) {
+        res.status(404);
+        res.send({
+          status: "error",
+          msg: `Restaurant ${restaurantId} not found`,
+        });
+      } else {
+        res.send(restaurant);
+        console.log(`Retrieved restaurant: ${restaurant.name} successfully.`);
+      }
+    });
 };
 
 // add a new restaurant
@@ -123,7 +136,7 @@ exports.addRestaurantForUser = async (req, res) => {
   // create the BiemenuMenu bank for the restaurant and link it to the restaurant
   var menuBank = new MenuBank({
     _id: new ObjectId(),
-    biemenuMenus: [],
+    menus: [],
   });
   try {
     await menuBank.save();
@@ -156,19 +169,15 @@ exports.addRestaurantForUser = async (req, res) => {
       );
 
       // if restaurant was added successfully add the restaurant Id to the users restaurants
-      User.findOneAndUpdate(
-        {
-          _id: userId,
+      User.findOneAndUpdate({
+        _id: userId,
+      }, {
+        $push: {
+          restaurants: restaurant._id,
         },
-        {
-          $push: {
-            restaurants: restaurant._id,
-          },
-        },
-        {
-          new: true,
-        }
-      ).exec(function (err, user) {
+      }, {
+        new: true,
+      }).exec(function (err, user) {
         if (err) {
           console.log(
             `An error occurred while adding restaurant ${restaurant.name} for user ${userId}: ${err}`
@@ -236,19 +245,15 @@ exports.addMenuToRestaurant = (req, res) => {
   );
 
   // find restaurant and update the menu
-  Restaurant.findOneAndUpdate(
-    {
-      _id: restaurantId,
+  Restaurant.findOneAndUpdate({
+    _id: restaurantId,
+  }, {
+    $push: {
+      menus: menu,
     },
-    {
-      $push: {
-        menus: menu,
-      },
-    },
-    {
-      new: true,
-    }
-  ).exec(function (err, restaurant) {
+  }, {
+    new: true,
+  }).exec(function (err, restaurant) {
     if (err) {
       console.log(
         `An error occurred while adding menu ${menu.name} to restaurant ${restaurantId}: ${err}`
@@ -272,17 +277,14 @@ exports.updateMenuTimestamp = (req, res) => {
   const menu = req.body;
   const restaurantId = req.params.id;
 
-  Restaurant.findOneAndUpdate(
-    {
-      _id: restaurantId,
-      "menus._id": menu._id,
+  Restaurant.findOneAndUpdate({
+    _id: restaurantId,
+    "menus._id": menu._id,
+  }, {
+    $set: {
+      "menus.$.lastupdated": new Date().toISOString(),
     },
-    {
-      $set: {
-        "menus.$.lastupdated": new Date().toISOString(),
-      },
-    }
-  ).exec(function (err, restaurant) {
+  }).exec(function (err, restaurant) {
     if (err) {
       console.log(`An error occurred while updating menu ${menu.name}: ${err}`);
       res.status(500);
@@ -310,19 +312,15 @@ exports.deleteMenuForRestaurant = (req, res) => {
   const menu = req.body;
   const restaurantId = req.params.id;
 
-  Restaurant.update(
-    {},
-    {
-      $pull: {
-        menus: {
-          _id: menu._id,
-        },
+  Restaurant.update({}, {
+    $pull: {
+      menus: {
+        _id: menu._id,
       },
     },
-    {
-      multi: true,
-    }
-  ).exec(function (err, restaurant) {
+  }, {
+    multi: true,
+  }).exec(function (err, restaurant) {
     if (err) {
       console.log(`An error occurred while deleting menu ${menu.name}: ${err}`);
       res.status(500);
@@ -375,16 +373,13 @@ exports.deleteRestaurantForUser = (req, res) => {
     `Received request to delete restaurant ${restaurantId} for user ${userId}`
   );
 
-  User.findOneAndUpdate(
-    {
-      _id: userId,
+  User.findOneAndUpdate({
+    _id: userId,
+  }, {
+    $pull: {
+      restaurants: restaurantId,
     },
-    {
-      $pull: {
-        restaurants: restaurantId,
-      },
-    }
-  ).exec(function (err, user) {
+  }).exec(function (err, user) {
     if (err) {
       console.log(`An error occurred while deleting menu ${menu.name}: ${err}`);
       res.status(500);
@@ -437,7 +432,7 @@ exports.getMenuMaxCountReached = (req, res) => {
     const maxMenuCount = user.maxMenusPerRestaurant;
     const restaurantId = req.params.id;
 
-    Restaurant.findById(restaurantId).exec((err, restaurant) => {
+    Restaurant.findById(restaurantId).exec(async (err, restaurant) => {
       if (err) {
         res.status(500).send({
           status: "error",
@@ -445,8 +440,14 @@ exports.getMenuMaxCountReached = (req, res) => {
         });
         return;
       }
-
-      if (restaurant.menus.length < maxMenuCount) {
+      var menuBank = await MenuBank.findById(restaurant.menuBank._id).exec();
+      if (!menuBank) {
+        return res.status(404).send({
+          status: "error",
+          msg: "No menu bank found",
+        });
+      }
+      if (menuBank.menus.length < maxMenuCount) {
         res.status(200).send({
           status: "success",
           msg: "User is allowed to add more menus",

@@ -44,7 +44,7 @@ const menuSchema = new Schema({
   schedule: {
     type: [Boolean],
   },
-
+  externalMenuLink: String,
 });
 
 module.exports = mongoose.model("Menu", menuSchema);
