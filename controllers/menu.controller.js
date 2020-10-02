@@ -1,8 +1,23 @@
+const {
+    menu
+} = require("../models");
 const db = require("../models");
 const Restaurant = require("../models/Restaurant");
+const AWS = require("aws-sdk");
 const Menu = db.menu;
 const MenuBank = db.menuBank;
 
+
+
+const AWSID = process.env.AWS_ACCESS_KEY_ID;
+const AWSSECRET = process.env.AWS_SECRET_KEY;
+
+const BUCKET_NAME = "bienmenu";
+
+const s3 = new AWS.S3({
+    accessKeyId: AWSID,
+    secretAccessKey: AWSSECRET,
+});
 // get menu by id
 exports.getMenuById = (req, res) => {
     const menuId = req.params.id;
@@ -33,62 +48,6 @@ exports.getMenuById = (req, res) => {
         });
 };
 
-// get menus for restaurant
-exports.getMenusForRestaurant = async (req, res) => {
-    const restaurantId = req.params.restaurantId;
-    var restaurant;
-    var menuBank;
-
-    try {
-        // get the restaurant from the database
-        restaurant = await Restaurant.findById(restaurantId).exec();
-
-        // if restaurant not found return 404
-        if (!restaurant) {
-            return res.status(404).send({
-                status: "error",
-                msg: "Restaurant not found",
-            });
-        }
-
-        // populate the restaurant menu bank
-        menuBank = await MenuBank.findById(restaurant.menuBank._id)
-            .populate("menus")
-            // .populate({
-            //     path: 'biemenuMenus',
-            //     model: Menu,
-            //     populate: {
-            //         path: 'sections.menuSectionItems.foodItem',
-            //         model: FoodItem
-            //     }
-            // })
-
-            .exec();
-
-        // if menu bank not found return 404
-        if (!menuBank) {
-            return res.status(404).send({
-                status: "error",
-                msg: "No menu bank found",
-            });
-        }
-
-        console.log(`menus successfully retrieved for restaurant ${restaurantId}`);
-        res.status(200).send({
-            status: "success",
-            menus: menuBank.menus,
-        });
-    } catch (err) {
-        console.log(`An error occurred while retrieving menus for ${restaurantId}`);
-        res.status(500).send({
-            err,
-            status: "error",
-        });
-        return;
-    }
-};
-
-// add a new menu
 exports.addMenu = (req, res) => {
     var menu = new Menu(req.body);
 
@@ -174,13 +133,13 @@ exports.addMenuForRestaurant = async (req, res) => {
 };
 
 exports.deleteMenu = async (req, res) => {
-    var menuId = req.body.menuId;
+    var menu = req.body.menu;
     var restaurantId = req.params.restaurantId;
     var restaurant;
 
     try {
         // delete menu from menu collection
-        await Menu.findByIdAndDelete(menuId);
+        await Menu.findByIdAndDelete(menu._id);
 
         // get the restaurant from the database
         restaurant = await Restaurant.findById(restaurantId).exec();
@@ -197,18 +156,45 @@ exports.deleteMenu = async (req, res) => {
             _id: restaurant.menuBank._id,
         }, {
             $pull: {
-                menus: menuId,
+                menus: menu._id,
             },
-        }, {
-            new: true,
-        });
+        }, );
 
-        console.log(`Deleted menu ${menuId} successfully.`);
+        console.log(`Deleted menu ${menu._id} successfully.`);
+        if (menu.type === "0") {
+            // upon successful deletion from the database delete file from cloud storage
+            var fileKey = `menus/${restaurantId}/${menu.filename}.pdf`;
+            var params = {
+                Bucket: BUCKET_NAME,
+                Key: fileKey,
+            };
 
-        res.send({
-            status: "success",
-            msg: "menu deleted successfully!",
-        });
+            // delete file from AWS
+            s3.deleteObject(params, function (err, data) {
+                if (err) {
+                    console.log(
+                        `An error occurred while trying to delete the menu ${menu.name} file: ${err}`
+                    );
+                    res.status(500).send({
+                        error: err,
+                    });
+                }
+                // menu file successfully deleted from AWS and from database
+                else {
+                    res.send({
+                        status: "success",
+                        msg: "Menu deleted successfully!",
+                    });
+                }
+            });
+
+        } else {
+            res.send({
+                status: "success",
+                msg: "menu deleted successfully!",
+            });
+        }
+
     } catch (err) {
         console.log(
             `An error occurred while deleting menu ${menu.name} into the database`
@@ -220,3 +206,60 @@ exports.deleteMenu = async (req, res) => {
         return;
     }
 };
+
+// // get menus for restaurant
+// exports.getMenusForRestaurant = async (req, res) => {
+//     const restaurantId = req.params.restaurantId;
+//     var restaurant;
+//     var menuBank;
+
+//     try {
+//         // get the restaurant from the database
+//         restaurant = await Restaurant.findById(restaurantId).exec();
+
+//         // if restaurant not found return 404
+//         if (!restaurant) {
+//             return res.status(404).send({
+//                 status: "error",
+//                 msg: "Restaurant not found",
+//             });
+//         }
+
+//         // populate the restaurant menu bank
+//         menuBank = await MenuBank.findById(restaurant.menuBank._id)
+//             .populate("menus")
+//             // .populate({
+//             //     path: 'biemenuMenus',
+//             //     model: Menu,
+//             //     populate: {
+//             //         path: 'sections.menuSectionItems.foodItem',
+//             //         model: FoodItem
+//             //     }
+//             // })
+
+//             .exec();
+
+//         // if menu bank not found return 404
+//         if (!menuBank) {
+//             return res.status(404).send({
+//                 status: "error",
+//                 msg: "No menu bank found",
+//             });
+//         }
+
+//         console.log(`menus successfully retrieved for restaurant ${restaurantId}`);
+//         res.status(200).send({
+//             status: "success",
+//             menus: menuBank.menus,
+//         });
+//     } catch (err) {
+//         console.log(`An error occurred while retrieving menus for ${restaurantId}`);
+//         res.status(500).send({
+//             err,
+//             status: "error",
+//         });
+//         return;
+//     }
+// };
+
+// add a new menu

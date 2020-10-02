@@ -1,5 +1,7 @@
 const controller = require("../controllers/menu.controller");
-const { authJwt } = require("../middlewares");
+const {
+  authJwt
+} = require("../middlewares");
 
 module.exports = function (app) {
   app.use(function (req, res, next) {
@@ -13,11 +15,11 @@ module.exports = function (app) {
   // GET
   app.get("/menus/menu/:id", [authJwt.verifyToken], controller.getMenuById);
 
-  app.get(
-    "/menus/restaurant/:restaurantId",
-    [authJwt.verifyToken],
-    controller.getMenusForRestaurant
-  );
+  // app.get(
+  //   "/menus/restaurant/:restaurantId",
+  //   [authJwt.verifyToken],
+  //   controller.getMenusForRestaurant
+  // );
 
   // ADD
 
