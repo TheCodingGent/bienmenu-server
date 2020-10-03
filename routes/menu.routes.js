@@ -1,7 +1,5 @@
 const controller = require("../controllers/menu.controller");
-const {
-  authJwt
-} = require("../middlewares");
+const { authJwt } = require("../middlewares");
 
 module.exports = function (app) {
   app.use(function (req, res, next) {
@@ -33,6 +31,12 @@ module.exports = function (app) {
     "/menus/menu/add/restaurant/:restaurantId",
     [authJwt.verifyToken],
     controller.addMenuForRestaurant
+  );
+
+  app.post(
+    "/menus/menu/update-status/:menuId",
+    [authJwt.verifyToken],
+    controller.updateMenuStatus
   );
 
   app.post(
