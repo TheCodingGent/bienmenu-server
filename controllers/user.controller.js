@@ -14,6 +14,10 @@ exports.adminContent = (req, res) => {
   res.status(200).send({ status: "success", msg: "Admin Content." });
 };
 
+exports.partnerContent = (req, res) => {
+  res.status(200).send({ status: "success", msg: "Partner Content." });
+};
+
 exports.getUserRestaurants = (req, res) => {
   User.findById(req.userId).exec((err, user) => {
     if (err) {

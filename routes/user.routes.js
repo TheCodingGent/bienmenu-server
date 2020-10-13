@@ -21,6 +21,12 @@ module.exports = function (app) {
   );
 
   app.get(
+    "/api/content/partner",
+    [authJwt.verifyToken, authJwt.isPartner],
+    controller.partnerContent
+  );
+
+  app.get(
     "/api/content/restaurants",
     [authJwt.verifyToken],
     controller.getUserRestaurants
