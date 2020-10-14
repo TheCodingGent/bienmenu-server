@@ -9,7 +9,7 @@ const { ObjectId } = require("mongodb");
 const AWSID = process.env.AWS_ACCESS_KEY_ID;
 const AWSSECRET = process.env.AWS_SECRET_KEY;
 
-const BUCKET_NAME = "bienmenu";
+const BUCKET_NAME = process.env.S3_MAIN_BUCKET;
 
 const s3 = new AWS.S3({
   accessKeyId: AWSID,
@@ -168,6 +168,8 @@ exports.deleteFoodItem = async (req, res) => {
       { $pull: { foodItems: foodItemId } },
       { new: true }
     );
+
+    // TO-DO delete food item image from S3.
 
     console.log(`Deleted food item ${foodItemId} successfully.`);
 

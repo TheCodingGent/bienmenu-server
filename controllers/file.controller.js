@@ -4,7 +4,7 @@ const AWS = require("aws-sdk");
 const AWSID = process.env.AWS_ACCESS_KEY_ID;
 const AWSSECRET = process.env.AWS_SECRET_KEY;
 
-const BUCKET_NAME = "bienmenu";
+const BUCKET_NAME = process.env.S3_MAIN_BUCKET;
 
 const s3 = new AWS.S3({
   accessKeyId: AWSID,

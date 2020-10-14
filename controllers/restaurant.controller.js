@@ -1,28 +1,11 @@
 const db = require("../models");
 const MenuBank = require("../models/MenuBank");
-const {
-  ObjectId
-} = require("mongodb");
+const { ObjectId } = require("mongodb");
 const User = db.user;
 const Restaurant = db.restaurant;
 const Menu = require("../models/Menu");
 
-// const AWS = require("aws-sdk");
-
-
-// const AWSID = process.env.AWS_ACCESS_KEY_ID;
-// const AWSSECRET = process.env.AWS_SECRET_KEY;
-
-// const BUCKET_NAME = "bienmenu";
-
-// const s3 = new AWS.S3({
-//   accessKeyId: AWSID,
-//   secretAccessKey: AWSSECRET,
-// });
-
 // get all restaurants
-
-
 exports.getRestaurants = (req, res) => {
   console.log(`Received request for all restaurants`);
 
@@ -63,16 +46,16 @@ exports.getRestaurantById = (req, res) => {
   }
 
   Restaurant.findOne({
-      _id: restaurantId,
-    }).populate({
-      path: 'menuBank',
+    _id: restaurantId,
+  })
+    .populate({
+      path: "menuBank",
       model: MenuBank,
       populate: {
-        path: 'menus',
-        model: Menu
-      }
+        path: "menus",
+        model: Menu,
+      },
     })
-
 
     .exec(function (err, restaurant) {
       if (err) {
@@ -189,15 +172,19 @@ exports.addRestaurantForUser = async (req, res) => {
       );
 
       // if restaurant was added successfully add the restaurant Id to the users restaurants
-      User.findOneAndUpdate({
-        _id: userId,
-      }, {
-        $push: {
-          restaurants: restaurant._id,
+      User.findOneAndUpdate(
+        {
+          _id: userId,
         },
-      }, {
-        new: true,
-      }).exec(function (err, user) {
+        {
+          $push: {
+            restaurants: restaurant._id,
+          },
+        },
+        {
+          new: true,
+        }
+      ).exec(function (err, user) {
         if (err) {
           console.log(
             `An error occurred while adding restaurant ${restaurant.name} for user ${userId}: ${err}`
@@ -233,33 +220,35 @@ exports.getAllMenusForRestaurant = (req, res) => {
 
   Restaurant.findOne({
     _id: restaurantId,
-  }).populate({
-    path: 'menuBank',
-    model: MenuBank,
-    populate: {
-      path: 'menus',
-      model: Menu
-    }
-  }).exec(function (err, restaurant) {
-    if (err) {
-      console.log(
-        `An error occurred while retrieving menus for restaurant ${restaurantId}: ${err}`
-      );
-      res.status(500);
-      res.send({
-        status: "error",
-        err,
-      });
-    } else if (restaurant === null) {
-      res.status(404);
-      res.send({
-        status: "error",
-        msg: `Restaurant ${restaurantId} not found`,
-      });
-    } else {
-      res.send(restaurant.menuBank.menus);
-    }
-  });
+  })
+    .populate({
+      path: "menuBank",
+      model: MenuBank,
+      populate: {
+        path: "menus",
+        model: Menu,
+      },
+    })
+    .exec(function (err, restaurant) {
+      if (err) {
+        console.log(
+          `An error occurred while retrieving menus for restaurant ${restaurantId}: ${err}`
+        );
+        res.status(500);
+        res.send({
+          status: "error",
+          err,
+        });
+      } else if (restaurant === null) {
+        res.status(404);
+        res.send({
+          status: "error",
+          msg: `Restaurant ${restaurantId} not found`,
+        });
+      } else {
+        res.send(restaurant.menuBank.menus);
+      }
+    });
 };
 
 exports.deleteRestaurantForUser = (req, res) => {
@@ -270,13 +259,16 @@ exports.deleteRestaurantForUser = (req, res) => {
     `Received request to delete restaurant ${restaurantId} for user ${userId}`
   );
 
-  User.findOneAndUpdate({
-    _id: userId,
-  }, {
-    $pull: {
-      restaurants: restaurantId,
+  User.findOneAndUpdate(
+    {
+      _id: userId,
     },
-  }).exec(function (err, user) {
+    {
+      $pull: {
+        restaurants: restaurantId,
+      },
+    }
+  ).exec(function (err, user) {
     if (err) {
       console.log(`An error occurred while deleting menu ${menu.name}: ${err}`);
       res.status(500);
@@ -418,7 +410,6 @@ exports.updateContactTracing = (req, res) => {
   });
 };
 
-
 exports.updateCoverPhoto = (req, res) => {
   const restaurantId = req.params.id;
 
@@ -452,167 +443,3 @@ exports.updateCoverPhoto = (req, res) => {
     });
   });
 };
-
-// exports.updateMenuHosting = (req, res) => {
-//   const restaurantId = req.params.id;
-
-//   Restaurant.findById(restaurantId).exec((err, restaurant) => {
-//     if (err) {
-//       res.status(500).send({
-//         status: "error",
-//         err,
-//       });
-//       return;
-//     }
-
-//     restaurant.hostedInternal = req.body.hostedInternal;
-
-//     restaurant.save(function (err, restaurant) {
-//       if (err) {
-//         console.log(
-//           `An error occurred while updating contact tracing for restaurant ${restaurant.name}: ${err}`
-//         );
-//         res.status(500);
-//         res.send({
-//           status: "error",
-//           err,
-//         });
-//       } else {
-//         res.send({
-//           status: "success",
-//           msg: "Restaurant updated successfully!",
-//         });
-//       }
-//     });
-//   });
-// };
-// Add a menu to an existing restaurant
-// exports.addMenuToRestaurant = (req, res) => {
-//   const menu = req.body;
-//   const restaurantId = req.params.id;
-
-//   console.log(
-//     `Received request to add a menu ${menu.name} to restaurant ${restaurantId}`
-//   );
-
-//   // find restaurant and update the menu
-//   Restaurant.findOneAndUpdate({
-//     _id: restaurantId,
-//   }, {
-//     $push: {
-//       menus: menu,
-//     },
-//   }, {
-//     new: true,
-//   }).exec(function (err, restaurant) {
-//     if (err) {
-//       console.log(
-//         `An error occurred while adding menu ${menu.name} to restaurant ${restaurantId}: ${err}`
-//       );
-//       res.status(500);
-//       res.send({
-//         status: "error",
-//         err,
-//       });
-//     } else {
-//       res.send({
-//         status: "success",
-//         msg: "Menu added successfully!",
-//       });
-//     }
-//   });
-// };
-
-// Update timestamp for a given menu, because the file has been updated
-// exports.updateMenuTimestamp = (req, res) => {
-//   const menu = req.body;
-//   const restaurantId = req.params.id;
-
-//   Restaurant.findOneAndUpdate({
-//     _id: restaurantId,
-//     "menus._id": menu._id,
-//   }, {
-//     $set: {
-//       "menus.$.lastupdated": new Date().toISOString(),
-//     },
-//   }).exec(function (err, restaurant) {
-//     if (err) {
-//       console.log(`An error occurred while updating menu ${menu.name}: ${err}`);
-//       res.status(500);
-//       res.send({
-//         status: "error",
-//         err,
-//       });
-//     } else if (restaurant === null) {
-//       res.status(404);
-//       res.send({
-//         status: "error",
-//         msg: `Restaurant ${restaurantId} not found`,
-//       });
-//     } else {
-//       res.send({
-//         status: "success",
-//         msg: "Menu updated successfully!",
-//       });
-//     }
-//   });
-// };
-
-// delete a menu from a given restaurant
-// exports.deleteMenuForRestaurant = (req, res) => {
-//   const menu = req.body;
-//   const restaurantId = req.params.id;
-
-//   Restaurant.update({}, {
-//     $pull: {
-//       menus: {
-//         _id: menu._id,
-//       },
-//     },
-//   }, {
-//     multi: true,
-//   }).exec(function (err, restaurant) {
-//     if (err) {
-//       console.log(`An error occurred while deleting menu ${menu.name}: ${err}`);
-//       res.status(500);
-//       res.send({
-//         status: "error",
-//         err,
-//       });
-//     } else if (restaurant === null) {
-//       res.status(404);
-//       res.send({
-//         status: "error",
-//         msg: "Menu not found",
-//       });
-//     } else {
-//       // upon successful deletion from the database delete file from cloud storage
-//       var fileKey = `menus/${restaurantId}/${menu.filename}.pdf`;
-//       var params = {
-//         Bucket: BUCKET_NAME,
-//         Key: fileKey,
-//       };
-
-//       // delete file from AWS
-//       s3.deleteObject(params, function (err, data) {
-//         if (err) {
-//           console.log(
-//             `An error occurred while trying to delete the menu ${menu.name} file: ${err}`
-//           );
-//           res.status(500).send({
-//             error: err,
-//           });
-//         }
-//         // menu file successfully deleted from AWS and from database
-//         else {
-//           res.send({
-//             status: "success",
-//             msg: "Menu deleted successfully!",
-//           });
-//         }
-//       });
-//     }
-//   });
-// };
-
-// delete a menu from a given restaurant
