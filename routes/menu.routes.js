@@ -11,7 +11,7 @@ module.exports = function (app) {
   });
 
   // GET
-  app.get("/menus/menu/:id", [authJwt.verifyToken], controller.getMenuById);
+  app.get("/menus/menu/:id", controller.getMenuById);
 
   // app.get(
   //   "/menus/restaurant/:restaurantId",
