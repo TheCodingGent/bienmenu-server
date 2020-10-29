@@ -423,6 +423,7 @@ exports.updateCoverPhoto = (req, res) => {
     }
 
     restaurant.coverPhotoUrl = req.body.coverPhotoUrl;
+    restaurant.coverPhotoFilename = req.body.coverPhotoFilename
 
     restaurant.save(function (err, restaurant) {
       if (err) {

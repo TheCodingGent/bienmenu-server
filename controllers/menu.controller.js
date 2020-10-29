@@ -39,6 +39,33 @@ exports.getMenuById = (req, res) => {
           msg: `Menu ${menuId} not found`,
         });
       } else {
+        //before returning the menu check for any dead references to removed fooditems that are null and remove them
+        const isUpdated = false;
+
+        menu.sections.map((s) => {
+          const oldMenuSectionItems = s.menuSectionItems;
+
+          // remove any menu section items with null fooditems
+          s.menuSectionItems = s.menuSectionItems.filter(
+            (i) => i.foodItem != null
+          );
+
+          if (oldMenuSectionItems.length !== s.menuSectionItems.length) {
+            isUpdated = true;
+          }
+        });
+
+        // save the menu to the db if it changed
+        if (isUpdated) {
+          menu.save(function (err, menu) {
+            if (err) {
+              console.log(
+                `An error occurred while updating modified menu in the database; ${menu.name}: ${err}`
+              );
+            }
+          });
+        }
+
         res.send(menu);
       }
     });

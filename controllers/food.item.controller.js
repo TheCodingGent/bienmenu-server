@@ -5,6 +5,7 @@ const FoodItemBank = db.foodItemBank;
 
 const AWS = require("aws-sdk");
 const { ObjectId } = require("mongodb");
+const MenuBank = require("../models/MenuBank");
 
 const AWSID = process.env.AWS_ACCESS_KEY_ID;
 const AWSSECRET = process.env.AWS_SECRET_KEY;
@@ -169,7 +170,7 @@ exports.deleteFoodItem = async (req, res) => {
       { new: true }
     );
 
-    // TO-DO delete food item image from S3.
+    await emptyS3Directory(BUCKET_NAME, `foodItems/${foodItemId}`);
 
     console.log(`Deleted food item ${foodItemId} successfully.`);
 
@@ -179,9 +180,34 @@ exports.deleteFoodItem = async (req, res) => {
     });
   } catch (err) {
     console.log(
-      `An error occurred while deleting food item ${foodItem.name} into the database`
+      `An error occurred while deleting food item ${foodItem.name} from the database`
     );
     res.status(500).send({ err, status: "error" });
     return;
   }
 };
+
+// Helper
+async function emptyS3Directory(bucket, dir) {
+  const listParams = {
+    Bucket: bucket,
+    Prefix: dir,
+  };
+
+  const listedObjects = await s3.listObjectsV2(listParams).promise();
+
+  if (listedObjects.Contents.length === 0) return;
+
+  const deleteParams = {
+    Bucket: bucket,
+    Delete: { Objects: [] },
+  };
+
+  listedObjects.Contents.forEach(({ Key }) => {
+    deleteParams.Delete.Objects.push({ Key });
+  });
+
+  await s3.deleteObjects(deleteParams).promise();
+
+  if (listedObjects.IsTruncated) await emptyS3Directory(bucket, dir);
+}

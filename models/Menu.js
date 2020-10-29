@@ -1,7 +1,5 @@
 const mongoose = require("mongoose");
-const {
-  ObjectId
-} = require("mongodb");
+const { ObjectId } = require("mongodb");
 const Schema = mongoose.Schema;
 
 const menuSectionItemSchema = new Schema({
@@ -13,7 +11,10 @@ const menuSectionItemSchema = new Schema({
   },
   menuSectionId: String,
   isActive: Boolean,
-
+  quantityLow: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const menuSectionSchema = new Schema({
@@ -25,7 +26,6 @@ const menuSectionSchema = new Schema({
     type: [menuSectionItemSchema],
   },
   isActive: Boolean,
-
 });
 
 const menuSchema = new Schema({
@@ -35,7 +35,7 @@ const menuSchema = new Schema({
   filename: String,
   lastupdated: {
     type: String,
-    default: new Date().toISOString()
+    default: new Date().toISOString(),
   },
   sections: {
     type: [menuSectionSchema],

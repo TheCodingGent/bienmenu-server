@@ -7,6 +7,7 @@ const foodItemSchema = new Schema({
   name: String,
   description: String,
   imageUrl: String,
+  imageFilename: String,
   tags: {
     type: [String],
   },

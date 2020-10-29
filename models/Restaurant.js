@@ -23,6 +23,7 @@ const restaurantSchema = new Schema({
   address: String,
   phone: String,
   coverPhotoUrl: String,
+  coverPhotoFilename: String,
 
   // menus: {
   //   type: [menuSchema],

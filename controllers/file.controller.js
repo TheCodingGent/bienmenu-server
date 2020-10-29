@@ -127,32 +127,17 @@ exports.uploadMenuFile = (req, res) => {
       ACL: "public-read",
     };
 
-    const deleteParams = {
-      Bucket: BUCKET_NAME,
-      Key: `menus/${restaurantId}/${fname}`,
-    };
-
-    // first attempt to delete the file then upload it
-    s3.deleteObject(deleteParams, function (err, data) {
+    // we are sending buffer data to s3.
+    s3.upload(params, (err, s3res) => {
       if (err) {
-        console.log(`An error occurred while updating menu file: ${err}`);
-        res.status(500).send({
-          error: err,
-        });
+        console.log(`An error occurred while uploading file to S3: ${err}`);
+        res.send({ err, status: "error" });
       } else {
-        // we are sending buffer data to s3.
-        s3.upload(params, (err, s3res) => {
-          if (err) {
-            console.log(`An error occurred while uploading file to S3: ${err}`);
-            res.send({ err, status: "error" });
-          } else {
-            console.log(`Menu file uploaded successfully`);
-            res.send({
-              //   data: s3res,
-              status: "success",
-              msg: "Menu file successfully uploaded.",
-            });
-          }
+        console.log(`Menu file uploaded successfully`);
+        res.send({
+          //   data: s3res,
+          status: "success",
+          msg: "Menu file successfully uploaded.",
         });
       }
     });
@@ -208,34 +193,19 @@ exports.uploadImageFile = (req, res) => {
       ACL: "public-read",
     };
 
-    const deleteParams = {
-      Bucket: BUCKET_NAME,
-      Key: `${key}/${fname}`,
-    };
-
-    // first attempt to delete the file then upload it
-    s3.deleteObject(deleteParams, function (err, data) {
+    // we are sending buffer data to s3.
+    s3.upload(params, (err, s3res) => {
       if (err) {
-        console.log(`An error occurred while updating image file: ${err}`);
-        res.status(500).send({
-          error: err,
-        });
+        console.log(
+          `An error occurred while uploading food item image to S3: ${err}`
+        );
+        res.send({ err, status: "error" });
       } else {
-        // we are sending buffer data to s3.
-        s3.upload(params, (err, s3res) => {
-          if (err) {
-            console.log(
-              `An error occurred while uploading food item image to S3: ${err}`
-            );
-            res.send({ err, status: "error" });
-          } else {
-            console.log(`Image file uploaded successfully`);
-            res.send({
-              //   data: s3res,
-              status: "success",
-              msg: "Image file successfully uploaded.",
-            });
-          }
+        console.log(`Image file uploaded successfully`);
+        res.send({
+          //   data: s3res,
+          status: "success",
+          msg: "Image file successfully uploaded.",
         });
       }
     });
